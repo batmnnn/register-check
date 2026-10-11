@@ -1,0 +1,46 @@
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "result": {
+    "context": {
+      "apiVersion": "4.4.0-beta.0",
+      "slot": 510058760
+    },
+    "value": {
+      "data": {
+        "parsed": {
+          "info": {
+            "decimals": 6,
+            "extensions": [
+              {
+                "extension": "permanentDelegate",
+                "state": {
+                  "delegate": "7K2fYJvQWNjmYEBr58UEoBY13YzhzC9rqRscXnbi3CaL"
+                }
+              },
+              {
+                "extension": "transferHook",
+                "state": {
+                  "authority": "7K2fYJvQWNjmYEBr58UEoBY13YzhzC9rqRscXnbi3CaL",
+                  "programId": null
+                }
+              }
+            ],
+            "freezeAuthority": null,
+            "isInitialized": true,
+            "mintAuthority": "7K2fYJvQWNjmYEBr58UEoBY13YzhzC9rqRscXnbi3CaL",
+            "supply": "1000000000"
+          },
+          "type": "mint"
+        },
+        "program": "spl-token-2022",
+        "space": 270
+      },
+      "executable": false,
+      "lamports": 2021840,
+      "owner": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+      "rentEpoch": 18446744073709551615,
+      "space": 270
+    }
+  }
+}

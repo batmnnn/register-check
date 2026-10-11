@@ -1,0 +1,82 @@
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "result": {
+    "blockTime": 1791758782,
+    "meta": {
+      "computeUnitsConsumed": 1578,
+      "costUnits": 3082,
+      "err": null,
+      "fee": 5000,
+      "innerInstructions": [],
+      "logMessages": [
+        "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb invoke [1]",
+        "Program log: TransferHookInstruction::Update",
+        "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb consumed 1578 of 200000 compute units",
+        "Program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb success"
+      ],
+      "postBalances": [
+        10024032720,
+        2021840,
+        1159846
+      ],
+      "postTokenBalances": [],
+      "preBalances": [
+        10024037720,
+        2021840,
+        1159846
+      ],
+      "preTokenBalances": [],
+      "rewards": [],
+      "status": {
+        "Ok": null
+      }
+    },
+    "slot": 510057386,
+    "transaction": {
+      "message": {
+        "accountKeys": [
+          {
+            "pubkey": "7K2fYJvQWNjmYEBr58UEoBY13YzhzC9rqRscXnbi3CaL",
+            "signer": true,
+            "source": "transaction",
+            "writable": true
+          },
+          {
+            "pubkey": "JAk4GmJzpk9qDXXn4t6s7kYXaNsGj3jv38w9NJyQhy8w",
+            "signer": false,
+            "source": "transaction",
+            "writable": true
+          },
+          {
+            "pubkey": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+            "signer": false,
+            "source": "transaction",
+            "writable": false
+          }
+        ],
+        "instructions": [
+          {
+            "parsed": {
+              "info": {
+                "authority": "7K2fYJvQWNjmYEBr58UEoBY13YzhzC9rqRscXnbi3CaL",
+                "mint": "JAk4GmJzpk9qDXXn4t6s7kYXaNsGj3jv38w9NJyQhy8w",
+                "programId": "9LamBFt3FeyZaFmVbwfY5XYYTujZkZYzgLF7DJiJEyUD"
+              },
+              "type": "updateTransferHook"
+            },
+            "program": "spl-token",
+            "programId": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+            "stackHeight": 1
+          }
+        ],
+        "recentBlockhash": "Djb67nCM5HarwT8oefWJkEvR9q7FnjmnDhZvaQRBFbG1"
+      },
+      "signatures": [
+        "4HBYHoAeaxTHXwmM5Ab84aqHSxXwLhpSLp5xGiFUziRodBL6Vvqf8f3R1UAA1Fr1Y4GzQMq2GJMwzpMDZ7SUKuYK"
+      ]
+    },
+    "transactionIndex": 2,
+    "version": "legacy"
+  }
+}

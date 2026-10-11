@@ -11,3 +11,5 @@ id.json
 wallet.json
 .DS_Store
 .claude/settings.local.json
+.secrets/
+proofs/
