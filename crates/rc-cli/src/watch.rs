@@ -47,6 +47,28 @@ pub struct WatchArgs {
     /// Poll once and exit (non-zero on error).
     #[arg(long)]
     pub once: bool,
+    /// Post each new proof's result hash on-chain (rc-attest).
+    #[cfg(feature = "attest")]
+    #[arg(long)]
+    pub attest: bool,
+    #[cfg(feature = "attest")]
+    #[command(flatten)]
+    pub chain: crate::attest::ChainArgs,
+}
+
+/// Attestation is optional; without the feature or the flag, proofs stay off-chain.
+#[cfg(feature = "attest")]
+type MaybeAttestor = Option<crate::attest::Attestor>;
+#[cfg(not(feature = "attest"))]
+type MaybeAttestor = Option<()>;
+
+fn attestor(args: &WatchArgs) -> Result<MaybeAttestor, CliError> {
+    #[cfg(feature = "attest")]
+    if args.attest {
+        return Ok(Some(crate::attest::Attestor::new(&args.chain)?));
+    }
+    let _ = args;
+    Ok(None)
 }
 
 pub async fn run(args: WatchArgs) -> Result<(), CliError> {
@@ -55,6 +77,7 @@ pub async fn run(args: WatchArgs) -> Result<(), CliError> {
     let rpc = HttpRpc::new(args.rpc.clone())?;
     let mut ingester = Ingester::new(rpc, args.mint.clone());
     let webhook_client = reqwest::Client::new();
+    let attestor = attestor(&args)?;
     println!(
         "watching {} on {} ({} rules, finalized, every {}s)",
         args.mint,
@@ -64,7 +87,16 @@ pub async fn run(args: WatchArgs) -> Result<(), CliError> {
     );
     loop {
         let started = Instant::now();
-        match tick(&args, &rules, &attestors, &mut ingester, &webhook_client).await {
+        match tick(
+            &args,
+            &rules,
+            &attestors,
+            &mut ingester,
+            &webhook_client,
+            &attestor,
+        )
+        .await
+        {
             Ok(()) => {}
             Err(e) if !args.once => eprintln!("poll failed, retrying: {e}"),
             Err(e) => return Err(e),
@@ -86,6 +118,7 @@ async fn tick(
     attestors: &[String],
     ingester: &mut Ingester<HttpRpc>,
     webhook: &reqwest::Client,
+    attestor: &MaybeAttestor,
 ) -> Result<(), CliError> {
     let report = ingester.poll().await?;
     let now = now_ts();
@@ -102,6 +135,8 @@ async fn tick(
         cluster: &args.cluster,
     };
     let bundles = build_all(rules, &violations, &src)?;
+    #[cfg(not(feature = "attest"))]
+    let _ = attestor;
 
     let mut proof_files: Vec<(String, String)> = Vec::new();
     for b in &bundles {
@@ -110,6 +145,13 @@ async fn tick(
             print_alert(b, &path);
             if let Some(url) = &args.webhook {
                 post_webhook(webhook, url, b).await;
+            }
+            #[cfg(feature = "attest")]
+            if let Some(att) = attestor {
+                // A failed attestation is reported, not fatal: the proof file is already written.
+                if let Err(e) = crate::attest::attest_file(att, &path).await {
+                    eprintln!("attest {} failed: {e}", path.display());
+                }
             }
         }
         let name = path

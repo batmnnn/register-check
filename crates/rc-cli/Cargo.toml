@@ -10,6 +10,11 @@ description = "Register Check command line: check, sign-reserve, watch"
 name = "rc"
 path = "src/main.rs"
 
+[features]
+default = ["attest"]
+# On-chain attestation via rc-attest (SPEC D2): the only place Solana SDK crates enter the build.
+attest = ["dep:anchor-client", "dep:rc-attest", "dep:solana-keypair"]
+
 [dependencies]
 rc-types.workspace = true
 rc-engine.workspace = true
@@ -23,6 +28,9 @@ thiserror.workspace = true
 ed25519-dalek.workspace = true
 bs58.workspace = true
 reqwest.workspace = true
+anchor-client = { version = "1.2.1", features = ["async"], optional = true }
+rc-attest = { path = "../../programs/rc-attest", features = ["no-entrypoint"], optional = true }
+solana-keypair = { version = "3.1", optional = true }
 
 [dev-dependencies]
 tempfile = "3"

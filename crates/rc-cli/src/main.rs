@@ -1,5 +1,7 @@
 //! `rc`: the Register Check command line.
 
+#[cfg(feature = "attest")]
+mod attest;
 mod inputs;
 mod sink;
 mod watch;
@@ -73,6 +75,9 @@ enum Cmd {
     },
     /// Follow a mint: poll finalized txs, run rules, write proofs + status.json.
     Watch(watch::WatchArgs),
+    /// Post proof bundles' result hashes to the rc-attest program.
+    #[cfg(feature = "attest")]
+    Attest(attest::AttestArgs),
 }
 
 #[tokio::main]
@@ -94,6 +99,8 @@ async fn main() -> ExitCode {
             out,
         } => inputs::sign_reserve(&keypair, mint, amount, decimals, source_url, as_of, &out),
         Cmd::Watch(args) => watch::run(args).await,
+        #[cfg(feature = "attest")]
+        Cmd::Attest(args) => attest::run(args).await,
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,

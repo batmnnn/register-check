@@ -8,10 +8,11 @@ A Rust + DataFusion engine that watches Solana Token-2022 mints and flags supply
 
 ## Stack & Constraints
 
-- **Rust 2021**, stable rustc 1.93 via rustup (verified 2026-10-12)
+- **Rust 2021**, pinned to **rustc 1.97.1** by `rust-toolchain.toml` (litesvm 0.18 and the Agave 4.3 runtime crates used by rc-attest tests need it; SBF builds use platform-tools' own compiler)
 - **Workspace layout**: pure Rust logic in `crates/rc-*`, Anchor program only in `programs/rc-attest`
 - **DataFusion 54** for rule evaluation (MSRV 1.88)
 - **Solana client crates pinned `~4.1`** (`solana-rpc-client`, `solana-transaction-status-client-types`) and `spl-token-2022-interface = "3"`. Never take the `4.5.0-alpha` crates crates.io lists as latest: they need rustc 1.98. Two `solana-pubkey` majors coexist, so convert at the boundary and don't mix Pubkey types
+- **rc-attest deployed on devnet**: `BNADNdmc5zJF54Tj6o1ctr3PmhjjDFPByPGGU3oLthV3` (upgrade authority = id.json). Program keypair backup is in `.secrets/rc_attest-program-keypair.json`; `cargo clean` deletes target/deploy, so restore it before `anchor build`. Tests use **litesvm 0.18** (0.10 from the Anchor scaffold can't load sBPFv3). IDL ships in `idl/`; on-chain IDL upload needs a JS project and is skipped
 - **Anchor 1.2.1** (avm) + **Agave CLI 4.3.0** / cargo-build-sbf 4.3.0 / platform-tools v1.57 for on-chain attestation. Builds sBPFv3 by default (required once SIMD-0500 activates; local `solana-test-validator` 4.3 already enforces it)
 - **Wallet**: `~/.config/solana/id.json`, set in `Anchor.toml [provider]` (the global CLI config points to a missing file, so pass `-k ~/.config/solana/id.json` to `solana` commands)
 - **Disk is tight** (~15 GB free): one shared workspace `target/`, and run `cargo clean` before SBF builds if space drops
@@ -59,8 +60,12 @@ anchor build                  # rc-attest program (sBPFv3)
 cargo fmt --all
 cargo clippy --workspace --all-targets
 
-# Run CLI (after rc-ingest + rc-engine complete)
-cargo run -p rc-cli -- watch --mint <MINT> --rpc <RPC_URL>
+# Demo (devnet): one-time setup, then watch / mint / attest
+scripts/devnet_setup.sh && scripts/demo.sh init
+scripts/demo.sh watch --attest          # proofs/ + status.json, result hashes posted on-chain
+scripts/demo.sh mint 100                # -> R1; also: swap-hook, unhook, stranger <n>, reserve <n>
+target/debug/rc attest proofs/R1_*.json # attest an existing proof
+python3 -I scripts/verify_proof.py proofs/*.json   # independent hash check
 ```
 
 ## Coding Rules (from prompts.md)

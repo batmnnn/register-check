@@ -1,0 +1,526 @@
+{
+  "address": "BNADNdmc5zJF54Tj6o1ctr3PmhjjDFPByPGGU3oLthV3",
+  "metadata": {
+    "name": "rc_attest",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Register Check on-chain attestation: rule SQL hashes and check result hashes"
+  },
+  "instructions": [
+    {
+      "name": "init_config",
+      "docs": [
+        "One-time setup; the payer becomes the authority allowed to register rules and post results."
+      ],
+      "discriminator": [
+        23,
+        235,
+        115,
+        232,
+        168,
+        96,
+        1,
+        231
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "post_result",
+      "docs": [
+        "Record one check result. Seeded by `result_hash`, so the same evidence can't be posted twice",
+        "and two results in one slot never collide."
+      ],
+      "discriminator": [
+        209,
+        11,
+        193,
+        110,
+        192,
+        1,
+        142,
+        9
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "rule",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  117,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "rule.id",
+                "account": "Rule"
+              },
+              {
+                "kind": "account",
+                "path": "rule.sql_hash",
+                "account": "Rule"
+              }
+            ]
+          }
+        },
+        {
+          "name": "result",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  115,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "rule"
+              },
+              {
+                "kind": "arg",
+                "path": "result_hash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "slot",
+          "type": "u64"
+        },
+        {
+          "name": "result_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "violated",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "register_rule",
+      "docs": [
+        "Register a rule version. A changed SQL file has a new `sql_hash` and gets its own account,",
+        "so every result stays tied to the exact SQL that produced it."
+      ],
+      "discriminator": [
+        255,
+        251,
+        98,
+        18,
+        227,
+        84,
+        208,
+        8
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "rule",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  117,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "id"
+              },
+              {
+                "kind": "arg",
+                "path": "sql_hash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "id",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "sql_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "CheckResult",
+      "discriminator": [
+        57,
+        20,
+        123,
+        164,
+        187,
+        64,
+        36,
+        89
+      ]
+    },
+    {
+      "name": "Config",
+      "discriminator": [
+        155,
+        12,
+        170,
+        224,
+        30,
+        250,
+        204,
+        130
+      ]
+    },
+    {
+      "name": "Rule",
+      "discriminator": [
+        82,
+        10,
+        53,
+        40,
+        250,
+        61,
+        143,
+        130
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "ResultPosted",
+      "discriminator": [
+        82,
+        92,
+        231,
+        184,
+        57,
+        147,
+        106,
+        5
+      ]
+    },
+    {
+      "name": "RuleRegistered",
+      "discriminator": [
+        15,
+        244,
+        90,
+        148,
+        192,
+        193,
+        171,
+        32
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "signer is not the config authority"
+    },
+    {
+      "code": 6001,
+      "name": "EmptyRuleId",
+      "msg": "rule id must not be empty"
+    },
+    {
+      "code": 6002,
+      "name": "EmptyResultHash",
+      "msg": "result hash must not be all zeros"
+    }
+  ],
+  "types": [
+    {
+      "name": "CheckResult",
+      "docs": [
+        "Named CheckResult because `Result` would shadow `anchor_lang::Result`."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "rule",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "docs": [
+              "Slot of the evidence (finalized)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "result_hash",
+            "docs": [
+              "sha256 of the canonical proof bundle."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "violated",
+            "type": "bool"
+          },
+          {
+            "name": "posted_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Config",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ResultPosted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "result",
+            "type": "pubkey"
+          },
+          {
+            "name": "rule",
+            "type": "pubkey"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          },
+          {
+            "name": "result_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "violated",
+            "type": "bool"
+          },
+          {
+            "name": "posted_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Rule",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "id",
+            "docs": [
+              "Rule id, UTF-8 zero-padded (e.g. \"R1_unbacked_mint\")."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "sql_hash",
+            "docs": [
+              "sha256 of the rule's .sql file bytes."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RuleRegistered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "rule",
+            "type": "pubkey"
+          },
+          {
+            "name": "id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "sql_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

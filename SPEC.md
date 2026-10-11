@@ -184,14 +184,17 @@ pub fn result_hash(b: &ProofBundle) -> Result<[u8; 32], ProofError>;
 rc check   --fixture <register.json> [--rules rules/]                         offline, prints violations
 rc run-once --mint M --rpc URL --reserves F --attestors F --allowlist F --out proofs/ [--attest]
 rc watch   (same flags as run-once) --interval 5                               loop; writes proofs/*.json + proofs/status.json
-rc attest  --proof proofs/x.json --program <ID> [--keypair ~/.config/solana/id.json]
+rc attest  <proofs/*.json> [--program <ID>] [--keypair ~/.config/solana/id.json] [--attest-cluster devnet]
+           (init_config + register_rule if missing, post_result, writes attested_tx into the file; idempotent)
+rc watch ... --attest                                                     auto-attest each new proof
+rc sign-reserve --keypair <attestor.json> --mint M --amount <tokens> --decimals 6 --out run/reserves.json
 ```
 Sinks: console (always), JSON file (always), webhook (`--webhook URL`, optional, cut-able).
 
 ### programs/rc-attest (Anchor 1.2.1)
 ```rust
 #[account] pub struct Config { pub authority: Pubkey, pub bump: u8 }                              // seeds ["config"]
-#[account] pub struct Rule   { pub id: [u8; 32], pub sql_hash: [u8; 32], pub bump: u8 }             // seeds ["rule", id]
+#[account] pub struct Rule   { pub id: [u8; 32], pub sql_hash: [u8; 32], pub bump: u8 }             // seeds ["rule", id, sql_hash]: each SQL version is its own account
 #[account] pub struct CheckResult { pub rule: Pubkey, pub slot: u64, pub result_hash: [u8; 32],
                                     pub violated: bool, pub posted_at: i64, pub bump: u8 }         // seeds ["result", rule, result_hash]
 pub fn init_config(ctx) -> Result<()>;                                     // payer becomes authority
