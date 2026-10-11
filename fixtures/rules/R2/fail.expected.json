@@ -3,12 +3,28 @@
     "mint": "MintRusd",
     "owner": "D",
     "amount": 7,
-    "slot": 100
+    "slot": 100,
+    "signature": null
+  },
+  {
+    "mint": "MintRusd",
+    "owner": "Passer",
+    "amount": 3,
+    "slot": 95,
+    "signature": "passIn"
   },
   {
     "mint": "MintRusd",
     "owner": "X",
     "amount": 5,
-    "slot": 100
+    "slot": 97,
+    "signature": "toX"
+  },
+  {
+    "mint": "MintRusd",
+    "owner": "X",
+    "amount": 5,
+    "slot": 100,
+    "signature": null
   }
 ]

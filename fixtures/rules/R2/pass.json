@@ -28,5 +28,17 @@
       "mint": "MintRusd",
       "owner": "B"
     }
+  ],
+  "transfers": [
+    {
+      "mint": "MintRusd",
+      "slot": 90,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "okTransfer",
+      "from_owner": "A",
+      "to_owner": "B",
+      "amount": 5
+    }
   ]
 }

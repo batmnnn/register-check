@@ -34,5 +34,37 @@
       "mint": "MintOther",
       "owner": "D"
     }
+  ],
+  "transfers": [
+    {
+      "mint": "MintRusd",
+      "slot": 95,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "passIn",
+      "from_owner": "A",
+      "to_owner": "Passer",
+      "amount": 3
+    },
+    {
+      "mint": "MintRusd",
+      "slot": 96,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "passOut",
+      "from_owner": "Passer",
+      "to_owner": "A",
+      "amount": 3
+    },
+    {
+      "mint": "MintRusd",
+      "slot": 97,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "toX",
+      "from_owner": "A",
+      "to_owner": "X",
+      "amount": 5
+    }
   ]
 }
