@@ -1,0 +1,31 @@
+{
+  "attested_tx": null,
+  "cluster": "devnet",
+  "commitment": "finalized",
+  "expected": {
+    "attestor": "AttestorDemo1111111111111111111111111111111",
+    "reserve_amount": "1000000000",
+    "reserve_as_of": "2026-10-11T00:00:00Z"
+  },
+  "explorer": "https://explorer.solana.com/tx/demoMintSig6?cluster=devnet",
+  "mint": "RUSDdemo1111111111111111111111111111111111",
+  "observed": {
+    "supply_after": "1100000000"
+  },
+  "result_hash": "44b3f86a92801aab24617944266b19662c51264b73fa79e74d0c8234ceaadccc",
+  "row": {
+    "as_of_ts": "2026-10-11T00:00:00Z",
+    "attestor": "AttestorDemo1111111111111111111111111111111",
+    "mint": "RUSDdemo1111111111111111111111111111111111",
+    "reserve_amount": "1000000000",
+    "signature": "demoMintSig6",
+    "slot": "1050",
+    "supply_after": "1100000000"
+  },
+  "rpc": "https://api.devnet.solana.com",
+  "rule": "R1_unbacked_mint",
+  "rule_sql_sha256": "a8b6374febe3ff70ebc0d6c98a4042b2c30b010c183038bb9c6d207a3bfb3742",
+  "signature": "demoMintSig6",
+  "slot": 1050,
+  "version": 1
+}

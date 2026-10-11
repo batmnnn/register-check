@@ -26,6 +26,7 @@ bs58 = "0.5"
 rc-types = { path = "crates/rc-types" }
 rc-engine = { path = "crates/rc-engine" }
 rc-ingest = { path = "crates/rc-ingest" }
+rc-proof = { path = "crates/rc-proof" }
 
 [profile.release]
 overflow-checks = true

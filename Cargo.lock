@@ -2419,6 +2419,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "rc-proof"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "rc-engine",
+ "rc-types",
+ "serde_json",
+ "sha2",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
 name = "rc-types"
 version = "0.1.0"
 dependencies = [
