@@ -89,9 +89,11 @@ pub fn build(rule: &Rule, row: &Map<String, Value>, src: &Source) -> Result<Valu
             rule: rule.id.clone(),
         })?;
     let signature = row.get("signature").and_then(Value::as_str);
-    let explorer = match signature {
-        Some(sig) => explorer_url(src.cluster, "tx", sig)?,
-        None => explorer_url(src.cluster, "address", mint)?,
+    // Event rules link the tx; holder rules (R2/R3) link the holder; anything else the mint.
+    let explorer = match (signature, row.get("owner").and_then(Value::as_str)) {
+        (Some(sig), _) => explorer_url(src.cluster, "tx", sig)?,
+        (None, Some(owner)) => explorer_url(src.cluster, "address", owner)?,
+        (None, None) => explorer_url(src.cluster, "address", mint)?,
     };
     let (observed, expected) = observed_expected(&rule.id, row);
     let mut bundle = json!({

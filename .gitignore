@@ -13,3 +13,4 @@ wallet.json
 .claude/settings.local.json
 .secrets/
 proofs/
+run/
