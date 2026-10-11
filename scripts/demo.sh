@@ -9,6 +9,7 @@
 #   demo.sh reserve <n>     issuer signs a new reserve attestation of n tokens
 #   demo.sh stranger <n>    holder A sends n tokens to a wallet not on the allowlist (-> R2)
 #   demo.sh dashboard       serve the dashboard at http://127.0.0.1:8080/web/
+#   demo.sh reset           new all-green demo mint (FRESH=1 devnet_setup.sh); archives proofs/ + run/
 set -euo pipefail
 cd "$(dirname "$0")/.."
 SECRETS=.secrets RUN=run
@@ -52,6 +53,12 @@ case "$cmd" in
     n=${1:?usage: demo.sh stranger <n>}
     SPL transfer "$MINT" "$n" "$(solana-keygen pubkey "$(key stranger)")" --owner "$(key holder-A)" \
       --fee-payer "$PAYER" --fund-recipient --allow-unfunded-recipient | grep Signature ;;
+  reset)
+    FRESH=1 scripts/devnet_setup.sh
+    arch="archive/$(date +%Y%m%dT%H%M%S)"; mkdir -p "$arch"
+    for d in proofs run; do [ -d "$d" ] && mv "$d" "$arch/"; done
+    echo "previous proofs/ and run/ archived to $arch"
+    exec "$0" init ;;
   dashboard)
     echo "dashboard: http://127.0.0.1:8080/web/"
     exec python3 -m http.server 8080 --bind 127.0.0.1 ;;

@@ -2,7 +2,8 @@
 # Create the demo Token-2022 mint on devnet: 6 decimals, permanent delegate + transfer-hook extensions
 # (hook enabled but unset), holders A-E with 200 tokens each and holder F with an empty account.
 # Total supply 1,000 = the demo reserve. All keys go to .secrets/ (gitignored). Safe to re-run: it
-# reuses existing keys and skips the mint if .secrets/demo.env exists.
+# reuses existing keys and skips the mint if .secrets/demo.env exists. FRESH=1 archives the current
+# demo and creates a new mint (for another all-green take; history on the old mint is permanent).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -29,12 +30,19 @@ key() { # key <name> -> path, creating the keypair if missing
 }
 pub() { solana-keygen pubkey "$(key "$1")"; }
 
+MINT_KEY=demo-mint
 if [ -f "$SECRETS/demo.env" ]; then
-  echo "demo mint already set up:"; cat "$SECRETS/demo.env"; exit 0
+  if [ "${FRESH:-0}" != 1 ]; then
+    echo "demo mint already set up (FRESH=1 for a new one):"; cat "$SECRETS/demo.env"; exit 0
+  fi
+  ts=$(date +%s)
+  mv "$SECRETS/demo.env" "$SECRETS/demo.env.$ts"
+  MINT_KEY="demo-mint-$ts"
+  echo "archived previous demo to $SECRETS/demo.env.$ts"
 fi
 
 echo "payer $(SOL address) balance $(SOL balance)"
-MINT_KP=$(key demo-mint)
+MINT_KP=$(key "$MINT_KEY")
 MINT=$(solana-keygen pubkey "$MINT_KP")
 
 SPL create-token "$MINT_KP" --decimals 6 --enable-permanent-delegate --enable-transfer-hook >/dev/null
