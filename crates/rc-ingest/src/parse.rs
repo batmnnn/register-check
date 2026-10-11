@@ -25,6 +25,7 @@ pub struct MintState {
     pub freeze_authority: Option<String>,
     pub permanent_delegate: Option<String>,
     pub transfer_hook_program: Option<String>,
+    pub transfer_hook_authority: Option<String>,
     pub close_authority: Option<String>,
 }
 
@@ -101,7 +102,7 @@ fn authority_kind(t: &str) -> Option<ChangeKind> {
         "mintTokens" => Some(ChangeKind::MintAuthority),
         "freezeAccount" => Some(ChangeKind::FreezeAuthority),
         "permanentDelegate" => Some(ChangeKind::PermanentDelegate),
-        "transferHookProgramId" => Some(ChangeKind::TransferHookProgram),
+        "transferHookProgramId" => Some(ChangeKind::TransferHookAuthority),
         "closeMint" => Some(ChangeKind::CloseAuthority),
         // Account-level authorities (owner/close of a token account) are not mint settings.
         "accountOwner" | "closeAccount" => None,
@@ -115,6 +116,7 @@ fn state_slot(state: &mut MintState, kind: ChangeKind) -> Option<&mut Option<Str
         ChangeKind::FreezeAuthority => Some(&mut state.freeze_authority),
         ChangeKind::PermanentDelegate => Some(&mut state.permanent_delegate),
         ChangeKind::TransferHookProgram => Some(&mut state.transfer_hook_program),
+        ChangeKind::TransferHookAuthority => Some(&mut state.transfer_hook_authority),
         ChangeKind::CloseAuthority => Some(&mut state.close_authority),
         ChangeKind::Other => None,
     }
@@ -390,6 +392,7 @@ fn visit(
         }
         "initializeTransferHook" => {
             state.transfer_hook_program = s(info, "programId").map(str::to_string);
+            state.transfer_hook_authority = s(info, "authority").map(str::to_string);
         }
         "initializeMintCloseAuthority" => {
             state.close_authority = s(info, "newAuthority").map(str::to_string);

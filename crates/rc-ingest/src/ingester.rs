@@ -90,48 +90,49 @@ impl<R: RpcSource> Ingester<R> {
             }
         }
 
-        let mut report_new = 0;
+        // Every unprocessed signature becomes pending *before* any fetch. If a fetch fails mid-poll
+        // (rate limit, timeout), the remaining signatures are retried next poll instead of being
+        // hidden behind newer, already-seen signatures.
         let mut failed_skipped = 0;
-        let mut batch: HashSet<String> = HashSet::new();
-        let retry: Vec<String> = self.pending.drain().collect();
-        let todo = fresh
-            .into_iter()
-            .map(|s| (s.signature, s.failed))
-            .chain(retry.into_iter().map(|s| (s, false)));
-        for (signature, failed) in todo {
-            if !batch.insert(signature.clone()) || self.seen.contains(&signature) {
-                continue; // duplicate within this poll
-            }
-            if failed {
-                self.seen.insert(signature);
-                failed_skipped += 1;
-                continue;
-            }
-            match self.rpc.transaction(&signature).await? {
-                Some(tx) => {
-                    let slot = tx["slot"].as_u64().unwrap_or(0);
-                    let idx = tx["transactionIndex"]
-                        .as_u64()
-                        .and_then(|i| u32::try_from(i).ok())
-                        .unwrap_or(0);
-                    self.txs.insert((slot, idx, signature.clone()), tx);
-                    self.seen.insert(signature);
-                    report_new += 1;
+        for sig in fresh {
+            if sig.failed {
+                if self.seen.insert(sig.signature) {
+                    failed_skipped += 1;
                 }
-                None => {
-                    self.pending.insert(signature);
-                }
+            } else if !self.seen.contains(&sig.signature) {
+                self.pending.insert(sig.signature);
             }
         }
+        let mut report_new = 0;
+        let mut todo: Vec<String> = self.pending.iter().cloned().collect();
+        todo.sort();
+        for signature in todo {
+            // On error, return with `pending` intact.
+            if let Some(tx) = self.rpc.transaction(&signature).await? {
+                let slot = tx["slot"].as_u64().unwrap_or(0);
+                let idx = tx["transactionIndex"]
+                    .as_u64()
+                    .and_then(|i| u32::try_from(i).ok())
+                    .unwrap_or(0);
+                self.txs.insert((slot, idx, signature.clone()), tx);
+                self.pending.remove(&signature);
+                self.seen.insert(signature);
+                report_new += 1;
+            }
+            // `None`: finalized but not served yet; stays pending.
+        }
 
-        let (register, unparsed, computed_upto) = self.rebuild(supply.context_slot)?;
+        let (register, unparsed, computed_upto) = self.rebuild(supply.context_slot);
         self.register = register;
         let computed_supply = last_supply(&self.register);
-        let drift = (computed_upto != supply.amount).then_some(SupplyDrift {
-            onchain: supply.amount,
-            computed: computed_upto,
-            slot: supply.context_slot,
-        });
+        // While transactions are pending the computed supply is incomplete by construction, so
+        // drift is only reported on a complete history (pending count is reported instead).
+        let drift =
+            (self.pending.is_empty() && computed_upto != supply.amount).then_some(SupplyDrift {
+                onchain: supply.amount,
+                computed: computed_upto,
+                slot: supply.context_slot,
+            });
         Ok(PollReport {
             new_signatures: report_new,
             failed_skipped,
@@ -144,12 +145,10 @@ impl<R: RpcSource> Ingester<R> {
     }
 
     /// Replay all kept transactions in (slot, tx_index) order. Returns the register, unparsed
-    /// instructions, and the supply computed from events at or before `upto_slot`.
-    #[allow(clippy::type_complexity)]
-    fn rebuild(
-        &self,
-        upto_slot: u64,
-    ) -> Result<(Register, Vec<(String, String)>, u64), IngestError> {
+    /// instructions / problems, and the supply computed from events at or before `upto_slot`.
+    /// Never fails: a transaction that can't be parsed is reported in `unparsed` (and will show up
+    /// as supply drift if it changed supply) instead of stopping monitoring.
+    fn rebuild(&self, upto_slot: u64) -> (Register, Vec<(String, String)>, u64) {
         let mut state = MintState::default();
         let mut reg = Register::default();
         let mut unparsed = Vec::new();
@@ -158,29 +157,40 @@ impl<R: RpcSource> Ingester<R> {
         // token account -> (owner, amount, slot); last write wins in replay order.
         let mut accounts: HashMap<String, (String, u64, u64)> = HashMap::new();
 
-        for tx in self.txs.values() {
-            let Some(p) = parse_transaction(tx, &self.mint, &mut state)? else {
-                continue;
+        for ((_, _, sig), tx) in &self.txs {
+            if tx["transactionIndex"].as_u64().is_none() {
+                unparsed.push((sig.clone(), "missing_transaction_index".to_string()));
+            }
+            let p = match parse_transaction(tx, &self.mint, &mut state) {
+                Ok(Some(p)) => p,
+                Ok(None) => continue,
+                Err(e) => {
+                    unparsed.push((sig.clone(), format!("parse_error: {e}")));
+                    continue;
+                }
             };
             unparsed.extend(p.unparsed.iter().map(|t| (p.signature.clone(), t.clone())));
             for (account, owner, amount) in &p.balances {
                 accounts.insert(account.clone(), (owner.clone(), *amount, p.slot));
             }
-            let overflow = || IngestError::SupplyOverflow {
-                signature: p.signature.clone(),
-            };
             for ev in p.events {
                 match ev {
-                    Event::Mint(mut m) => {
-                        supply = supply.checked_add(m.amount).ok_or_else(overflow)?;
-                        m.supply_after = supply;
-                        reg.mints.push(m);
-                    }
-                    Event::Burn(mut b) => {
-                        supply = supply.checked_sub(b.amount).ok_or_else(overflow)?;
-                        b.supply_after = supply;
-                        reg.burns.push(b);
-                    }
+                    Event::Mint(mut m) => match supply.checked_add(m.amount) {
+                        Some(s) => {
+                            supply = s;
+                            m.supply_after = supply;
+                            reg.mints.push(m);
+                        }
+                        None => unparsed.push((p.signature.clone(), "supply_overflow".into())),
+                    },
+                    Event::Burn(mut b) => match supply.checked_sub(b.amount) {
+                        Some(s) => {
+                            supply = s;
+                            b.supply_after = supply;
+                            reg.burns.push(b);
+                        }
+                        None => unparsed.push((p.signature.clone(), "supply_underflow".into())),
+                    },
                     Event::Transfer(t) => reg.transfers.push(t),
                     Event::Authority(a) => reg.authority_changes.push(a),
                 }
@@ -206,7 +216,7 @@ impl<R: RpcSource> Ingester<R> {
                 slot,
             })
             .collect();
-        Ok((reg, unparsed, supply_upto))
+        (reg, unparsed, supply_upto)
     }
 }
 

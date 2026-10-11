@@ -57,6 +57,8 @@ pub enum ChangeKind {
     FreezeAuthority,
     PermanentDelegate,
     TransferHookProgram,
+    /// Who may update the transfer-hook program (`setAuthority` transferHookProgramId).
+    TransferHookAuthority,
     CloseAuthority,
     Other,
 }
@@ -68,6 +70,7 @@ impl ChangeKind {
             ChangeKind::FreezeAuthority => "freeze_authority",
             ChangeKind::PermanentDelegate => "permanent_delegate",
             ChangeKind::TransferHookProgram => "transfer_hook_program",
+            ChangeKind::TransferHookAuthority => "transfer_hook_authority",
             ChangeKind::CloseAuthority => "close_authority",
             ChangeKind::Other => "other",
         }

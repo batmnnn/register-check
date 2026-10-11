@@ -60,6 +60,8 @@ struct FakeRpc {
     supply: TokenSupply,
     page: usize,
     tx_calls: AtomicUsize,
+    /// If non-zero, the Nth `transaction()` call (1-based) fails like an exhausted rate limit.
+    fail_at: AtomicUsize,
 }
 
 impl FakeRpc {
@@ -93,6 +95,7 @@ impl FakeRpc {
             },
             page: 1000,
             tx_calls: AtomicUsize::new(0),
+            fail_at: AtomicUsize::new(0),
         }
     }
 }
@@ -121,7 +124,13 @@ impl RpcSource for FakeRpc {
             .collect())
     }
     async fn transaction(&self, sig: &str) -> Result<Option<Value>, IngestError> {
-        self.tx_calls.fetch_add(1, Ordering::SeqCst);
+        let n = self.tx_calls.fetch_add(1, Ordering::SeqCst) + 1;
+        if self.fail_at.load(Ordering::SeqCst) == n {
+            return Err(IngestError::RateLimited {
+                method: "getTransaction",
+                attempts: 6,
+            });
+        }
         Ok(self.txs.get(sig).cloned())
     }
     async fn token_supply(&self, _m: &str) -> Result<TokenSupply, IngestError> {
@@ -312,6 +321,7 @@ async fn paginates_past_1000_signatures_and_dedups_page_overlap() {
         },
         page: 1000,
         tx_calls: AtomicUsize::new(0),
+        fail_at: AtomicUsize::new(0),
     };
     let mut ing = Ingester::new(rpc, MINT);
     let report = ing.poll().await.expect("poll");
@@ -455,4 +465,107 @@ async fn live_devnet_demo_mint_reconciles() {
     assert_eq!(report.computed_supply, report.supply.amount);
     let held: u64 = ing.register().balances.iter().map(|b| b.amount).sum();
     assert_eq!(held, report.supply.amount, "balances add up to supply");
+}
+
+// Bug caught: a transient RPC error mid-poll permanently hides the older, unfetched signatures
+// behind newer `seen` ones (review finding #1).
+#[tokio::test]
+async fn rpc_error_mid_poll_loses_nothing() {
+    let rpc = FakeRpc::devnet();
+    rpc.fail_at.store(5, Ordering::SeqCst);
+    let mut ing = Ingester::new(rpc, MINT);
+    assert!(ing.poll().await.is_err(), "5th getTransaction fails");
+    let report = ing.poll().await.expect("next poll recovers");
+    assert_eq!(report.pending, 0);
+    assert_eq!(report.drift, None);
+    assert_devnet_register(ing.register());
+}
+
+// Bug caught: a signature the RPC doesn't serve yet is dropped instead of retried, and its
+// absence is reported as supply drift.
+#[tokio::test]
+async fn unserved_transaction_stays_pending_and_suppresses_drift() {
+    let mut rpc = FakeRpc::devnet();
+    let mint_sig = sig_of(&fixture("tx_mintToChecked"));
+    rpc.txs.remove(&mint_sig).expect("mint tx");
+    let mut ing = Ingester::new(rpc, MINT);
+    let report = ing.poll().await.expect("poll");
+    assert_eq!(report.pending, 1);
+    assert_eq!(report.drift, None, "incomplete history is not drift");
+    let calls = ing.rpc().tx_calls.load(Ordering::SeqCst);
+    let report = ing.poll().await.expect("poll 2");
+    assert_eq!(report.pending, 1, "still pending, not dropped");
+    assert_eq!(
+        ing.rpc().tx_calls.load(Ordering::SeqCst),
+        calls + 1,
+        "retried exactly once"
+    );
+}
+
+// Bug caught: setAuthority(transferHookProgramId) treated as a hook *program* change, corrupting
+// the old_value of a later updateTransferHook (review finding #11).
+#[test]
+fn hook_authority_change_does_not_overwrite_hook_program() {
+    let mut tx = fixture("tx_setAuthority");
+    for ix in tx["transaction"]["message"]["instructions"]
+        .as_array_mut()
+        .expect("ixs")
+    {
+        if ix["programId"] == TOKEN_2022_PROGRAM_ID {
+            ix["parsed"]["info"]["authorityType"] = json!("transferHookProgramId");
+        }
+    }
+    let mut state = MintState {
+        transfer_hook_program: Some(HOOK_A.into()),
+        transfer_hook_authority: Some(PAYER.into()),
+        ..Default::default()
+    };
+    let p = parse_transaction(&tx, MINT, &mut state)
+        .expect("ok")
+        .expect("ok");
+    let Event::Authority(a) = &p.events[0] else {
+        panic!("authority event")
+    };
+    assert_eq!(a.change_kind, ChangeKind::TransferHookAuthority);
+    assert_eq!(a.old_value.as_deref(), Some(PAYER));
+    assert_eq!(
+        state.transfer_hook_program.as_deref(),
+        Some(HOOK_A),
+        "program untouched"
+    );
+    assert_eq!(
+        state.transfer_hook_authority.as_deref(),
+        Some(NEW_MINT_AUTH)
+    );
+}
+
+// Bug caught: one malformed transaction makes every later poll fail (monitoring wedged).
+#[tokio::test]
+async fn malformed_transaction_is_reported_not_fatal() {
+    let mut rpc = FakeRpc::devnet();
+    let transfer_sig = sig_of(&fixture("tx_transferChecked"));
+    let tx = rpc.txs.get_mut(&transfer_sig).expect("tx");
+    for ix in tx["transaction"]["message"]["instructions"]
+        .as_array_mut()
+        .expect("ixs")
+    {
+        if ix["programId"] == TOKEN_2022_PROGRAM_ID {
+            ix["parsed"]["info"]["tokenAmount"]["amount"] = json!("not-a-number");
+        }
+    }
+    let mut ing = Ingester::new(rpc, MINT);
+    let report = ing.poll().await.expect("poll still succeeds");
+    assert!(
+        report
+            .unparsed
+            .iter()
+            .any(|(s, t)| s == &transfer_sig && t.starts_with("parse_error")),
+        "{:?}",
+        report.unparsed
+    );
+    assert_eq!(
+        ing.register().mints.len(),
+        1,
+        "rest of history still ingested"
+    );
 }
