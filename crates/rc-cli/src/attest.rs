@@ -16,6 +16,8 @@ use crate::inputs::{read, write_atomic};
 use crate::CliError;
 
 pub const DEFAULT_PROGRAM_ID: &str = "BNADNdmc5zJF54Tj6o1ctr3PmhjjDFPByPGGU3oLthV3";
+const BPF_LOADER_UPGRADEABLE: Pubkey =
+    Pubkey::from_str_const("BPFLoaderUpgradeab1e11111111111111111111111");
 
 #[derive(Args, Debug, Clone)]
 pub struct AttestArgs {
@@ -145,6 +147,12 @@ impl Attestor {
             .accounts(rc_attest::accounts::InitConfig {
                 config,
                 authority: self.authority,
+                program: self.program.id(),
+                program_data: Pubkey::find_program_address(
+                    &[self.program.id().as_ref()],
+                    &BPF_LOADER_UPGRADEABLE,
+                )
+                .0,
                 system_program: system_program::ID,
             })
             .args(rc_attest::instruction::InitConfig {})

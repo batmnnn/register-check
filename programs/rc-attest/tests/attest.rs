@@ -51,6 +51,23 @@ fn load<T: AccountDeserialize>(svm: &LiteSVM, key: &Pubkey) -> (T, usize) {
     )
 }
 
+const BPF_LOADER_UPGRADEABLE: Pubkey =
+    Pubkey::from_str_const("BPFLoaderUpgradeab1e11111111111111111111111");
+
+fn program_data() -> Pubkey {
+    Pubkey::find_program_address(&[rc_attest::id().as_ref()], &BPF_LOADER_UPGRADEABLE).0
+}
+
+/// LiteSVM deploys with no upgrade authority; patch the ProgramData metadata
+/// (u32 tag, u64 slot, Option<Pubkey>) the way a real deploy sets it.
+fn set_upgrade_authority(svm: &mut LiteSVM, authority: Pubkey) {
+    let pd = program_data();
+    let mut acc = svm.get_account(&pd).expect("program data");
+    acc.data[12] = 1;
+    acc.data[13..45].copy_from_slice(authority.as_ref());
+    svm.set_account(pd, acc).expect("patch program data");
+}
+
 fn init_config_ix(config: Pubkey, authority: Pubkey) -> Instruction {
     Instruction::new_with_bytes(
         rc_attest::id(),
@@ -58,6 +75,8 @@ fn init_config_ix(config: Pubkey, authority: Pubkey) -> Instruction {
         rc_attest::accounts::InitConfig {
             config,
             authority,
+            program: rc_attest::id(),
+            program_data: program_data(),
             system_program: system_program::ID,
         }
         .to_account_metas(None),
@@ -116,6 +135,7 @@ fn setup() -> Env {
     let authority = Keypair::new();
     svm.airdrop(&authority.pubkey(), 10_000_000_000)
         .expect("airdrop");
+    set_upgrade_authority(&mut svm, authority.pubkey());
     let config = Pubkey::find_program_address(&[CONFIG_SEED], &rc_attest::id()).0;
     let mut env = Env {
         svm,
@@ -264,4 +284,40 @@ fn all_zero_result_hash_is_rejected() {
         err.contains("EmptyResultHash") || err.contains("6002"),
         "{err}"
     );
+}
+
+// Bug caught: anyone front-running init_config on a fresh deploy to become the attestation
+// authority (review finding #8).
+#[test]
+fn only_upgrade_authority_can_init_config() {
+    let mut svm = LiteSVM::new();
+    let bytes = include_bytes!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../target/deploy/rc_attest.so"
+    ));
+    svm.add_program(rc_attest::id(), bytes)
+        .expect("program loads");
+    let deployer = Keypair::new();
+    let attacker = Keypair::new();
+    for k in [&deployer, &attacker] {
+        svm.airdrop(&k.pubkey(), 10_000_000_000).expect("airdrop");
+    }
+    set_upgrade_authority(&mut svm, deployer.pubkey());
+    let config = Pubkey::find_program_address(&[CONFIG_SEED], &rc_attest::id()).0;
+    let err = send(
+        &mut svm,
+        init_config_ix(config, attacker.pubkey()),
+        &attacker,
+    )
+    .expect_err("front-run");
+    assert!(
+        err.contains("NotUpgradeAuthority") || err.contains("6003"),
+        "{err}"
+    );
+    send(
+        &mut svm,
+        init_config_ix(config, deployer.pubkey()),
+        &deployer,
+    )
+    .expect("deployer inits");
 }

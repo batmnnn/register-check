@@ -10,7 +10,9 @@
     {
       "name": "init_config",
       "docs": [
-        "One-time setup; the payer becomes the authority allowed to register rules and post results."
+        "One-time setup. Only the program's upgrade authority may call it (so nobody can front-run a",
+        "fresh deploy and become the attestation authority); it becomes the authority allowed to",
+        "register rules and post results."
       ],
       "discriminator": [
         23,
@@ -46,6 +48,13 @@
           "name": "authority",
           "writable": true,
           "signer": true
+        },
+        {
+          "name": "program",
+          "address": "BNADNdmc5zJF54Tj6o1ctr3PmhjjDFPByPGGU3oLthV3"
+        },
+        {
+          "name": "program_data"
         },
         {
           "name": "system_program",
@@ -354,6 +363,11 @@
       "code": 6002,
       "name": "EmptyResultHash",
       "msg": "result hash must not be all zeros"
+    },
+    {
+      "code": 6003,
+      "name": "NotUpgradeAuthority",
+      "msg": "only the program upgrade authority can initialize the config"
     }
   ],
   "types": [

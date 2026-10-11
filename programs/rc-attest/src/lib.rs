@@ -14,7 +14,9 @@ pub const RESULT_SEED: &[u8] = b"result";
 pub mod rc_attest {
     use super::*;
 
-    /// One-time setup; the payer becomes the authority allowed to register rules and post results.
+    /// One-time setup. Only the program's upgrade authority may call it (so nobody can front-run a
+    /// fresh deploy and become the attestation authority); it becomes the authority allowed to
+    /// register rules and post results.
     pub fn init_config(ctx: Context<InitConfig>) -> Result<()> {
         let config = &mut ctx.accounts.config;
         config.authority = ctx.accounts.authority.key();
@@ -108,6 +110,10 @@ pub struct InitConfig<'info> {
     pub config: Account<'info, Config>,
     #[account(mut)]
     pub authority: Signer<'info>,
+    #[account(constraint = program.programdata_address()? == Some(program_data.key()) @ AttestError::NotUpgradeAuthority)]
+    pub program: Program<'info, crate::program::RcAttest>,
+    #[account(constraint = program_data.upgrade_authority_address == Some(authority.key()) @ AttestError::NotUpgradeAuthority)]
+    pub program_data: Account<'info, ProgramData>,
     pub system_program: Program<'info, System>,
 }
 
@@ -174,4 +180,6 @@ pub enum AttestError {
     EmptyRuleId,
     #[msg("result hash must not be all zeros")]
     EmptyResultHash,
+    #[msg("only the program upgrade authority can initialize the config")]
+    NotUpgradeAuthority,
 }
