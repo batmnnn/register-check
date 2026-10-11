@@ -1,0 +1,5 @@
+[toolchain]
+# litesvm 0.18 / Agave 4.3 runtime crates (rc-attest tests) need rustc >= 1.97.1. SBF builds use
+# platform-tools' own compiler and are unaffected.
+channel = "1.97.1"
+components = ["clippy", "rustfmt"]

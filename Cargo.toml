@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/*"]
+members = ["crates/*", "programs/*"]
 resolver = "2"
 
 [workspace.package]
@@ -30,6 +30,13 @@ rc-proof = { path = "crates/rc-proof" }
 
 [profile.release]
 overflow-checks = true
+lto = "fat"
+codegen-units = 1
+
+[profile.release.build-override]
+opt-level = 3
+incremental = false
+codegen-units = 1
 
 # Disk is tight on the build box: keep line tables for our crates, no debuginfo for dependencies.
 [profile.dev]
