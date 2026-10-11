@@ -1,0 +1,25 @@
+[workspace]
+members = ["crates/*"]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+rust-version = "1.88"
+license = "Apache-2.0"
+repository = "https://github.com/batmnnn/register-check"
+
+[workspace.dependencies]
+# DataFusion 54 is the newest release whose MSRV (1.88) builds on rustc 1.93; arrow must match its arrow (58).
+datafusion = { version = "54.1", default-features = false, features = ["sql", "datetime_expressions", "recursive_protection"] }
+arrow = { version = "58.3", default-features = false, features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1.52", features = ["macros", "rt-multi-thread"] }
+sha2 = "0.10"
+hex = "0.4"
+rc-types = { path = "crates/rc-types" }
+rc-engine = { path = "crates/rc-engine" }
+
+[profile.release]
+overflow-checks = true

@@ -1,0 +1,150 @@
+{
+  "mints": [
+    {
+      "mint": "RUSDdemo1111111111111111111111111111111111",
+      "slot": 1000,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "demoMintSig1",
+      "amount": 200000000,
+      "supply_after": 200000000,
+      "authority": "IssuerAuth111111111111111111111111111111111"
+    },
+    {
+      "mint": "RUSDdemo1111111111111111111111111111111111",
+      "slot": 1010,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "demoMintSig2",
+      "amount": 200000000,
+      "supply_after": 400000000,
+      "authority": "IssuerAuth111111111111111111111111111111111"
+    },
+    {
+      "mint": "RUSDdemo1111111111111111111111111111111111",
+      "slot": 1020,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "demoMintSig3",
+      "amount": 200000000,
+      "supply_after": 600000000,
+      "authority": "IssuerAuth111111111111111111111111111111111"
+    },
+    {
+      "mint": "RUSDdemo1111111111111111111111111111111111",
+      "slot": 1030,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "demoMintSig4",
+      "amount": 200000000,
+      "supply_after": 800000000,
+      "authority": "IssuerAuth111111111111111111111111111111111"
+    },
+    {
+      "mint": "RUSDdemo1111111111111111111111111111111111",
+      "slot": 1040,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "demoMintSig5",
+      "amount": 200000000,
+      "supply_after": 1000000000,
+      "authority": "IssuerAuth111111111111111111111111111111111"
+    },
+    {
+      "mint": "RUSDdemo1111111111111111111111111111111111",
+      "slot": 1050,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "demoMintSig6",
+      "amount": 100000000,
+      "supply_after": 1100000000,
+      "authority": "IssuerAuth111111111111111111111111111111111"
+    }
+  ],
+  "transfers": [
+    {
+      "mint": "RUSDdemo1111111111111111111111111111111111",
+      "slot": 1060,
+      "tx_index": 2,
+      "ix_index": 0,
+      "signature": "demoTransferSig1",
+      "from_owner": "HolderA11111111111111111111111111111111111",
+      "to_owner": "HolderF11111111111111111111111111111111111",
+      "amount": 20000000
+    }
+  ],
+  "balances": [
+    {
+      "mint": "RUSDdemo1111111111111111111111111111111111",
+      "owner": "HolderA11111111111111111111111111111111111",
+      "amount": 180000000,
+      "slot": 1060
+    },
+    {
+      "mint": "RUSDdemo1111111111111111111111111111111111",
+      "owner": "HolderB11111111111111111111111111111111111",
+      "amount": 200000000,
+      "slot": 1060
+    },
+    {
+      "mint": "RUSDdemo1111111111111111111111111111111111",
+      "owner": "HolderC11111111111111111111111111111111111",
+      "amount": 200000000,
+      "slot": 1060
+    },
+    {
+      "mint": "RUSDdemo1111111111111111111111111111111111",
+      "owner": "HolderD11111111111111111111111111111111111",
+      "amount": 200000000,
+      "slot": 1060
+    },
+    {
+      "mint": "RUSDdemo1111111111111111111111111111111111",
+      "owner": "HolderE11111111111111111111111111111111111",
+      "amount": 200000000,
+      "slot": 1060
+    },
+    {
+      "mint": "RUSDdemo1111111111111111111111111111111111",
+      "owner": "HolderF11111111111111111111111111111111111",
+      "amount": 120000000,
+      "slot": 1060
+    }
+  ],
+  "reserves": [
+    {
+      "mint": "RUSDdemo1111111111111111111111111111111111",
+      "as_of_ts": 1791676800,
+      "reserve_amount": 1000000000,
+      "attestor": "AttestorDemo1111111111111111111111111111111",
+      "sig": "demo-unsigned-fixture",
+      "source_url": "https://example.invalid/reserves/2026-10-11.json"
+    }
+  ],
+  "allowlist": [
+    {
+      "mint": "RUSDdemo1111111111111111111111111111111111",
+      "owner": "HolderA11111111111111111111111111111111111"
+    },
+    {
+      "mint": "RUSDdemo1111111111111111111111111111111111",
+      "owner": "HolderB11111111111111111111111111111111111"
+    },
+    {
+      "mint": "RUSDdemo1111111111111111111111111111111111",
+      "owner": "HolderC11111111111111111111111111111111111"
+    },
+    {
+      "mint": "RUSDdemo1111111111111111111111111111111111",
+      "owner": "HolderD11111111111111111111111111111111111"
+    },
+    {
+      "mint": "RUSDdemo1111111111111111111111111111111111",
+      "owner": "HolderE11111111111111111111111111111111111"
+    },
+    {
+      "mint": "RUSDdemo1111111111111111111111111111111111",
+      "owner": "HolderF11111111111111111111111111111111111"
+    }
+  ]
+}
