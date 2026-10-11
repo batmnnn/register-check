@@ -140,29 +140,32 @@ Rule ids come from the first-line comment `-- R1 unbacked_mint` turned into `R1_
 
 ### rc-ingest
 ```rust
-#[async_trait] pub trait RpcSource {
-    async fn signatures(&self, address: &str, before: Option<&str>) -> Result<Vec<SigInfo>, IngestError>; // ≤1000, finalized
+#[async_trait] pub trait RpcSource: Send + Sync {          // every call at commitment=finalized
+    async fn signatures(&self, address: &str, before: Option<&str>) -> Result<Vec<SigInfo>, IngestError>; // ≤1000, newest first
     async fn transaction(&self, sig: &str) -> Result<Option<Value>, IngestError>;   // jsonParsed, maxSupportedTransactionVersion 0
-    async fn token_supply(&self, mint: &str) -> Result<u64, IngestError>;
-    async fn token_accounts_by_mint(&self, mint: &str) -> Result<(u64 /*slot*/, Vec<Balance>), IngestError>; // getProgramAccounts, Token-2022, memcmp mint
-    async fn mint_info(&self, mint: &str) -> Result<MintInfo, IngestError>;  // authorities, permanent delegate, hook program
+    async fn token_supply(&self, mint: &str) -> Result<TokenSupply, IngestError>;  // amount + context slot
 }
-pub struct HttpRpc { url: String, client: reqwest::Client }             // impl RpcSource
-pub struct Ingester<R: RpcSource> { rpc: R, mint: String, seen: HashSet<String>, newest: Option<String>, events: ParsedEvents }
+pub struct HttpRpc;                                         // reqwest + rustls, exponential backoff on HTTP 429
+pub struct Ingester<R: RpcSource>;                          // keeps raw txs; rebuilds everything per poll
 impl<R: RpcSource> Ingester<R> {
-    pub async fn poll(&mut self) -> Result<PollReport, IngestError>;   // pages until newest seen; dedups
-    pub fn register(&self) -> Register;                                // events + balances snapshot
+    pub fn new(rpc: R, mint: impl Into<String>) -> Self;
+    pub async fn poll(&mut self) -> Result<PollReport, IngestError>;  // pages until a seen sig; dedups; retries pending
+    pub fn register(&self) -> &Register;                    // mints, burns, transfers, authority_changes, balances
 }
-pub fn parse_transaction(tx: &Value, mint: &str, pdelegate: Option<&str>) -> Result<Vec<Event>, IngestError>; // outer + inner ixs; meta.err != null → empty
-pub fn compute_supply(events: &mut [Event]) -> Result<(), IngestError>; // checked add/sub; sorted by (slot, tx_index)
+pub struct PollReport { new_signatures, failed_skipped, pending, unparsed: Vec<(sig, ix_type)>, supply: TokenSupply,
+                        computed_supply: u64, drift: Option<SupplyDrift> }
+pub fn parse_transaction(tx: &Value, mint: &str, state: &mut MintState) -> Result<Option<ParsedTx>, IngestError>; // meta.err != null → None
 pub fn verify_reserve(r: &Reserve, attestors: &[String], now_ts: i64) -> Result<(), ReserveError>;
-pub fn reserve_message(r: &Reserve) -> Vec<u8>;   // canonical JSON of all fields except sig
+pub fn reserve_message(r: &Reserve) -> Result<Vec<u8>, ReserveError>;   // sorted compact JSON, all fields but sig, amount as string
 ```
+`MintState` (mint/freeze authority, permanent delegate, hook program, close authority) is replayed from the history. It supplies `old_value` for authority changes and decides `via_permanent_delegate`: the burn authority is the current permanent delegate and isn't the account owner. Supply reconciliation only counts events at or before `getTokenSupply`'s context slot, so a tx finalized between the two calls can't raise false drift. `tx_index` comes from `transactionIndex`, which Agave 4.x returns from both `getTransaction` and `getSignaturesForAddress`.
+**Balances** are not fetched with `getProgramAccounts`: public devnet RPC rejects it for Token-2022 (error -32010, checked 2026-10-12). Since the ingester has the full mint history, the balances snapshot is the latest `meta.postTokenBalances` entry per token account, which gives owner and amount. The same pre/post token balances map token accounts to owners for `transfers.from_owner/to_owner`. Reconciliation check: sum of balances == `getTokenSupply`.
+
 Parsed instruction types (names verified against Agave v4.3.0 `transaction-status/src/parse_token.rs`): `mintTo`, `mintToChecked`, `burn`, `burnChecked`, `transfer`, `transferChecked`, `transferCheckedWithFee`, `setAuthority`, `updateTransferHook`, `initializePermanentDelegate`, and **`batch`**. A `batch` holds inner token instructions in `info.instructions`; the parser recurses into them, so a `mintTo` wrapped in a batch is not a bypass.
 
 - Match instructions by **`programId == TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb`**, not by the `program` label. The jsonParsed label is shared with legacy SPL Token.
-- `setAuthority`: count it only when `info.account == mint`. Map `authorityType` like this: `mintTokens`→mint_authority, `freezeAccount`→freeze_authority, `permanentDelegate`→permanent_delegate, `transferHookProgramId`→transfer_hook_program, `closeMint`→close_authority, anything else (`pause`, `metadataPointer`, …)→other.
-- Walk outer and inner instructions (`meta.innerInstructions`), so CPI mints are caught. `tx_index` is the transaction's position in the block, from `getBlock`. If that's unavailable, use the reverse order of the signature page within a slot (documented).
+- `setAuthority`: mint-level changes carry `info.mint` (verified on devnet); `info.account` means a token-account authority, which is ignored. Map `authorityType` like this: `mintTokens`→mint_authority, `freezeAccount`→freeze_authority, `permanentDelegate`→permanent_delegate, `transferHookProgramId`→transfer_hook_program, `closeMint`→close_authority, anything else (`pause`, `metadataPointer`, …)→other.
+- Walk outer and inner instructions (`meta.innerInstructions`), so CPI mints are caught. Batch members are serialized as bare `{type, info}`.
 - Any instruction on the Token-2022 program touching our mint that isn't in the list above gets counted in `PollReport.unparsed` and logged. The parser never drops it silently.
 
 ### rc-proof
