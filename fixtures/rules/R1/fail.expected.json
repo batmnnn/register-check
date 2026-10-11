@@ -1,0 +1,11 @@
+[
+  {
+    "mint": "MintRusd",
+    "signature": "unbackedSig",
+    "slot": 30,
+    "supply_after": 1100000000,
+    "reserve_amount": 1000000000,
+    "as_of_ts": "2026-10-11T00:00:00Z",
+    "attestor": "AttestorLow"
+  }
+]

@@ -1,0 +1,60 @@
+{
+  "mints": [
+    {
+      "mint": "MintRusd",
+      "slot": 10,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "MintRusd-mint-10",
+      "amount": 1000000000,
+      "supply_after": 1000000000,
+      "authority": "Issuer"
+    },
+    {
+      "mint": "MintRusd",
+      "slot": 30,
+      "tx_index": 3,
+      "ix_index": 0,
+      "signature": "unbackedSig",
+      "amount": 100000000,
+      "supply_after": 1100000000,
+      "authority": "Issuer"
+    },
+    {
+      "mint": "MintOther",
+      "slot": 40,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "MintOther-mint-40",
+      "amount": 9000000,
+      "supply_after": 9000000,
+      "authority": "Issuer"
+    }
+  ],
+  "reserves": [
+    {
+      "mint": "MintRusd",
+      "as_of_ts": 1791676800,
+      "reserve_amount": 5000000000,
+      "attestor": "AttestorHigh",
+      "sig": "sig",
+      "source_url": "https://example.invalid/r.json"
+    },
+    {
+      "mint": "MintRusd",
+      "as_of_ts": 1791676800,
+      "reserve_amount": 1000000000,
+      "attestor": "AttestorLow",
+      "sig": "sig",
+      "source_url": "https://example.invalid/r.json"
+    },
+    {
+      "mint": "MintRusd",
+      "as_of_ts": 1791590400,
+      "reserve_amount": 9000000000,
+      "attestor": "Attestor",
+      "sig": "sig",
+      "source_url": "https://example.invalid/r.json"
+    }
+  ]
+}

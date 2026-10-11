@@ -1,0 +1,26 @@
+[
+  {
+    "mint": "MintBig",
+    "owner": "V",
+    "amount": 9223372036854775807,
+    "supply": 18446744073709551615
+  },
+  {
+    "mint": "MintBig",
+    "owner": "W",
+    "amount": 9223372036854775808,
+    "supply": 18446744073709551615
+  },
+  {
+    "mint": "MintRusd",
+    "owner": "A",
+    "amount": 200000000,
+    "supply": 900000000
+  },
+  {
+    "mint": "MintRusd",
+    "owner": "C",
+    "amount": 520000000,
+    "supply": 900000000
+  }
+]

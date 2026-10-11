@@ -1,0 +1,64 @@
+{
+  "authority_changes": [
+    {
+      "mint": "MintRusd",
+      "slot": 60,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "MintRusd-transfer_hook_program-60",
+      "change_kind": "transfer_hook_program",
+      "old_value": "HookB",
+      "new_value": "HookA"
+    },
+    {
+      "mint": "MintRusd",
+      "slot": 50,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "MintRusd-transfer_hook_program-50",
+      "change_kind": "transfer_hook_program",
+      "old_value": "HookA",
+      "new_value": "HookB"
+    },
+    {
+      "mint": "MintRusd",
+      "slot": 55,
+      "tx_index": 1,
+      "ix_index": 0,
+      "signature": "MintRusd-mint_authority-55",
+      "change_kind": "mint_authority",
+      "old_value": "Issuer",
+      "new_value": "Attacker"
+    },
+    {
+      "mint": "MintRusd",
+      "slot": 40,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "MintRusd-permanent_delegate-40",
+      "change_kind": "permanent_delegate",
+      "old_value": null,
+      "new_value": "PD"
+    },
+    {
+      "mint": "MintRusd",
+      "slot": 45,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "MintRusd-other-45",
+      "change_kind": "other",
+      "old_value": "a",
+      "new_value": "b"
+    },
+    {
+      "mint": "MintRusd",
+      "slot": 46,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "MintRusd-close_authority-46",
+      "change_kind": "close_authority",
+      "old_value": "c",
+      "new_value": "d"
+    }
+  ]
+}

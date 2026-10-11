@@ -1,0 +1,46 @@
+{
+  "mints": [
+    {
+      "mint": "MintRusd",
+      "slot": 10,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "MintRusd-mint-10",
+      "amount": 1000000000,
+      "supply_after": 1000000000,
+      "authority": "Issuer"
+    }
+  ],
+  "balances": [
+    {
+      "mint": "MintRusd",
+      "owner": "A",
+      "amount": 200000000,
+      "slot": 100
+    },
+    {
+      "mint": "MintRusd",
+      "owner": "B",
+      "amount": 200000000,
+      "slot": 100
+    },
+    {
+      "mint": "MintRusd",
+      "owner": "C",
+      "amount": 200000000,
+      "slot": 100
+    },
+    {
+      "mint": "MintRusd",
+      "owner": "D",
+      "amount": 200000000,
+      "slot": 100
+    },
+    {
+      "mint": "MintRusd",
+      "owner": "E",
+      "amount": 200000000,
+      "slot": 100
+    }
+  ]
+}

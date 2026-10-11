@@ -1,0 +1,69 @@
+{
+  "mints": [
+    {
+      "mint": "MintRusd",
+      "slot": 10,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "MintRusd-mint-10",
+      "amount": 1000000000,
+      "supply_after": 1000000000,
+      "authority": "Issuer"
+    },
+    {
+      "mint": "MintBig",
+      "slot": 5,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "MintBig-mint-5",
+      "amount": 18446744073709551615,
+      "supply_after": 18446744073709551615,
+      "authority": "Issuer"
+    }
+  ],
+  "burns": [
+    {
+      "mint": "MintRusd",
+      "slot": 20,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "burnSig",
+      "amount": 100000000,
+      "supply_after": 900000000,
+      "authority": "PD",
+      "via_permanent_delegate": true
+    }
+  ],
+  "balances": [
+    {
+      "mint": "MintRusd",
+      "owner": "A",
+      "amount": 200000000,
+      "slot": 100
+    },
+    {
+      "mint": "MintRusd",
+      "owner": "B",
+      "amount": 180000000,
+      "slot": 100
+    },
+    {
+      "mint": "MintRusd",
+      "owner": "C",
+      "amount": 520000000,
+      "slot": 100
+    },
+    {
+      "mint": "MintBig",
+      "owner": "W",
+      "amount": 9223372036854775808,
+      "slot": 100
+    },
+    {
+      "mint": "MintBig",
+      "owner": "V",
+      "amount": 9223372036854775807,
+      "slot": 100
+    }
+  ]
+}

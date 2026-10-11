@@ -1,0 +1,42 @@
+{
+  "mints": [
+    {
+      "mint": "MintRusd",
+      "slot": 10,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "MintRusd-mint-10",
+      "amount": 600000000,
+      "supply_after": 600000000,
+      "authority": "Issuer"
+    },
+    {
+      "mint": "MintRusd",
+      "slot": 20,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "MintRusd-mint-20",
+      "amount": 400000000,
+      "supply_after": 1000000000,
+      "authority": "Issuer"
+    }
+  ],
+  "reserves": [
+    {
+      "mint": "MintRusd",
+      "as_of_ts": 1791590400,
+      "reserve_amount": 500000000,
+      "attestor": "Attestor",
+      "sig": "sig",
+      "source_url": "https://example.invalid/r.json"
+    },
+    {
+      "mint": "MintRusd",
+      "as_of_ts": 1791676800,
+      "reserve_amount": 1000000000,
+      "attestor": "Attestor",
+      "sig": "sig",
+      "source_url": "https://example.invalid/r.json"
+    }
+  ]
+}

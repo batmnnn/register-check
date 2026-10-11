@@ -1,0 +1,34 @@
+[
+  {
+    "mint": "MintRusd",
+    "slot": 40,
+    "signature": "MintRusd-permanent_delegate-40",
+    "change_kind": "permanent_delegate",
+    "old_value": null,
+    "new_value": "PD"
+  },
+  {
+    "mint": "MintRusd",
+    "slot": 50,
+    "signature": "MintRusd-transfer_hook_program-50",
+    "change_kind": "transfer_hook_program",
+    "old_value": "HookA",
+    "new_value": "HookB"
+  },
+  {
+    "mint": "MintRusd",
+    "slot": 55,
+    "signature": "MintRusd-mint_authority-55",
+    "change_kind": "mint_authority",
+    "old_value": "Issuer",
+    "new_value": "Attacker"
+  },
+  {
+    "mint": "MintRusd",
+    "slot": 60,
+    "signature": "MintRusd-transfer_hook_program-60",
+    "change_kind": "transfer_hook_program",
+    "old_value": "HookB",
+    "new_value": "HookA"
+  }
+]

@@ -1,0 +1,38 @@
+{
+  "balances": [
+    {
+      "mint": "MintRusd",
+      "owner": "A",
+      "amount": 10,
+      "slot": 100
+    },
+    {
+      "mint": "MintRusd",
+      "owner": "X",
+      "amount": 5,
+      "slot": 100
+    },
+    {
+      "mint": "MintRusd",
+      "owner": "D",
+      "amount": 7,
+      "slot": 100
+    },
+    {
+      "mint": "MintRusd",
+      "owner": "Zero",
+      "amount": 0,
+      "slot": 100
+    }
+  ],
+  "allowlist": [
+    {
+      "mint": "MintRusd",
+      "owner": "A"
+    },
+    {
+      "mint": "MintOther",
+      "owner": "D"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+[package]
+name = "rc-engine"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Register Check DataFusion rule engine"
+
+[dependencies]
+rc-types.workspace = true
+datafusion.workspace = true
+arrow.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+sha2.workspace = true
+hex.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true

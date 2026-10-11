@@ -1,0 +1,14 @@
+[
+  {
+    "mint": "MintRusd",
+    "owner": "D",
+    "amount": 7,
+    "slot": 100
+  },
+  {
+    "mint": "MintRusd",
+    "owner": "X",
+    "amount": 5,
+    "slot": 100
+  }
+]

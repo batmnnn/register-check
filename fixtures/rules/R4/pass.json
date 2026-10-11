@@ -1,0 +1,24 @@
+{
+  "authority_changes": [
+    {
+      "mint": "MintRusd",
+      "slot": 10,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "MintRusd-close_authority-10",
+      "change_kind": "close_authority",
+      "old_value": "X",
+      "new_value": "Y"
+    },
+    {
+      "mint": "MintRusd",
+      "slot": 11,
+      "tx_index": 0,
+      "ix_index": 0,
+      "signature": "MintRusd-other-11",
+      "change_kind": "other",
+      "old_value": "P",
+      "new_value": "Q"
+    }
+  ]
+}
