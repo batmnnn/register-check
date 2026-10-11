@@ -1,0 +1,13 @@
+/target
+**/target
+node_modules/
+.anchor/
+test-ledger/
+.env
+.env.*
+*.keypair.json
+**/*-keypair.json
+id.json
+wallet.json
+.DS_Store
+.claude/settings.local.json
