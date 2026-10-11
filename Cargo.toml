@@ -29,3 +29,10 @@ rc-ingest = { path = "crates/rc-ingest" }
 
 [profile.release]
 overflow-checks = true
+
+# Disk is tight on the build box: keep line tables for our crates, no debuginfo for dependencies.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
