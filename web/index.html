@@ -103,18 +103,24 @@
   </footer>
 </div>
 <script>
-const STATUS_URL = new URLSearchParams(location.search).get("status") || "../proofs/status.json";
+// ?status= may only point at a same-origin relative path: an absolute or protocol-relative URL
+// would let a link render attacker JSON (a fake all-green register) on this origin.
+const requested = new URLSearchParams(location.search).get("status");
+const STATUS_URL = requested && /^[\w./-]+\.json$/.test(requested) && !requested.startsWith("//") ? requested : "../proofs/status.json";
 const BASE = STATUS_URL.replace(/[^/]*$/, "");
 const RULE_TEXT = {
   R0_supply_drift: "Computed supply disagrees with getTokenSupply: a supply change was not parsed.",
   R1_unbacked_mint: "Supply after a mint exceeds the latest signed reserve attestation.",
-  R2_non_allowlisted_holder: "A wallet outside the allowlist holds a positive balance.",
+  R0_reserve_evidence: "No valid, fresh, signed reserve attestation, so R1 cannot pass on evidence.",
+  R2_non_allowlisted_holder: "A wallet outside the allowlist holds or received tokens.",
   R3_holder_concentration: "A single holder controls more than 20% of supply.",
-  R4_privileged_change: "Mint/freeze authority, permanent delegate or transfer-hook program changed.",
+  R4_privileged_change: "Mint/freeze authority, permanent delegate, or transfer-hook program/authority changed.",
 };
 const proofCache = new Map();
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+// Only explorer links are rendered as hrefs (blocks javascript: and look-alike URLs in proof files).
+const safeExplorer = (u) => (typeof u === "string" && u.startsWith("https://explorer.solana.com/") ? u : "#");
 const short = (s, n = 4) => (s && s.length > 2 * n + 1 ? `${s.slice(0, n)}…${s.slice(-n)}` : s ?? "—");
 
 // Exact base-unit -> token formatting with BigInt (amounts arrive as strings).
@@ -147,8 +153,8 @@ function renderRules(st) {
   $("rules").innerHTML = st.rules.map((r) => `
     <div class="rule ${r.passed ? "ok" : "bad"}">
       <div class="top"><span class="id">${esc(r.id.split("_")[0])} ${esc(r.id.split("_").slice(1).join(" "))}</span>
-        <span class="pill">${r.passed ? "PASS" : `FAIL · ${r.violations}`}</span></div>
-      <p>${esc(RULE_TEXT[r.id] || "")}</p>
+        <span class="pill">${r.passed ? "PASS" : `FAIL · ${esc(Number(r.violations) || 0)}`}</span></div>
+      <p>${esc(RULE_TEXT[r.id] || "")}${r.detail && typeof r.detail === "string" ? `<br>${esc(r.detail)}` : ""}</p>
       ${r.sql_sha256 ? `<code title="sha256 of rules/${esc(r.id.split("_")[0])}.sql">sql ${esc(r.sql_sha256.slice(0, 16))}…</code>` : ""}
     </div>`).join("");
 }
@@ -164,13 +170,24 @@ function renderAlert(p, st) {
     <dl class="kv">
       <dt>observed</dt><dd>${esc(obs)}</dd>
       <dt>expected</dt><dd>${esc(exp)}</dd>
-      <dt>evidence</dt><dd><a href="${esc(p.explorer)}" target="_blank" rel="noopener">${esc(p.signature ? "tx " + short(p.signature, 8) : "account")}</a>${p.slot != null ? ` · slot ${esc(p.slot)}` : ""} · ${esc(p.commitment)}</dd>
+      <dt>evidence</dt><dd><a href="${esc(safeExplorer(p.explorer))}" target="_blank" rel="noopener">${esc(p.signature ? "tx " + short(p.signature, 8) : "account")}</a>${p.slot != null ? ` · slot ${esc(p.slot)}` : ""} · ${esc(p.commitment)}</dd>
       <dt>result_hash</dt><dd>${esc(p.result_hash)}</dd>
       <dt>rule sql</dt><dd>${esc(p.rule_sql_sha256)}</dd>
     </dl></div>`;
 }
 
+// Stale = watcher timestamp old OR finalized slot not advancing (a hung RPC can keep the
+// timestamp fresh while serving old data).
+let lastSlot = null, lastSlotChange = Date.now();
+
 async function tick() {
+  try { await render(); } catch (e) {
+    $("updated").textContent = "bad status data";
+    document.body.classList.add("stale");
+  }
+}
+
+async function render() {
   let st;
   try {
     const r = await fetch(STATUS_URL, { cache: "no-store" });
@@ -182,7 +199,9 @@ async function tick() {
     return;
   }
   const staleAfter = Math.max(15, 4 * (st.poll_interval_secs || 5));
-  document.body.classList.toggle("stale", Date.now() / 1000 - st.updated_at > staleAfter);
+  if (st.finalized_slot !== lastSlot) { lastSlot = st.finalized_slot; lastSlotChange = Date.now(); }
+  const slotStuck = (Date.now() - lastSlotChange) / 1000 > 2 * staleAfter;
+  document.body.classList.toggle("stale", Date.now() / 1000 - st.updated_at > staleAfter || slotStuck);
   $("mint").textContent = short(st.mint, 6);
   $("mint").title = st.mint;
   $("updated").textContent = `updated ${ago(st.updated_at)}`;

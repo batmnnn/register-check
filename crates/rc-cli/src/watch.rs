@@ -133,8 +133,9 @@ async fn tick(
     let engine = Engine::new(&reg, rules.to_vec()).await?;
     let results = engine.run_all().await?;
     let violations: Vec<Violation> = results.iter().filter(|v| !v.passed()).cloned().collect();
+    let rpc = rpc_label(&args.rpc);
     let src = Source {
-        rpc: &args.rpc,
+        rpc: &rpc,
         cluster: &args.cluster,
     };
     let bundles = build_all(rules, &violations, &src)?;
@@ -149,11 +150,17 @@ async fn tick(
             if let Some(url) = &args.webhook {
                 post_webhook(webhook, url, b).await;
             }
-            #[cfg(feature = "attest")]
-            if let Some(att) = attestor {
+        }
+        // Attest new proofs, and retry earlier ones whose attestation failed (attested_tx null).
+        #[cfg(feature = "attest")]
+        if let Some(att) = attestor {
+            if is_new || crate::sink::needs_attestation(&path) {
                 // A failed attestation is reported, not fatal: the proof file is already written.
                 if let Err(e) = crate::attest::attest_file(att, &path).await {
-                    eprintln!("attest {} failed: {e}", path.display());
+                    eprintln!(
+                        "attest {} failed (will retry next poll): {e}",
+                        path.display()
+                    );
                 }
             }
         }
@@ -182,6 +189,14 @@ async fn tick(
         serde_json::to_string_pretty(&status).map_err(|e| CliError::Invalid(e.to_string()))?;
     write_atomic(&args.out.join("status.json"), &format!("{body}\n"))?;
     print_summary(&report, &results, latest, &rejected);
+    if let Some(problem) = reserve_problem(
+        latest,
+        &rejected,
+        now,
+        args.stale_days.saturating_mul(86_400),
+    ) {
+        println!("  R0 RESERVE EVIDENCE FAIL: {problem}");
+    }
     Ok(())
 }
 
@@ -197,6 +212,17 @@ fn status_json(
     now: i64,
 ) -> Value {
     let mut rule_rows: Vec<Value> = Vec::new();
+    let stale_after = args.stale_days.saturating_mul(86_400);
+    // Without valid, fresh reserve evidence R1 would pass vacuously; make that a failing check.
+    if let Some(problem) = reserve_problem(latest, rejected, now, stale_after) {
+        rule_rows.push(json!({
+            "id": "R0_reserve_evidence",
+            "passed": false,
+            "violations": 1,
+            "detail": problem,
+            "proofs": [],
+        }));
+    }
     if let Some(d) = report.drift {
         rule_rows.push(json!({
             "id": "R0_supply_drift",
@@ -225,12 +251,11 @@ fn status_json(
             "proofs": proofs,
         }));
     }
-    let stale_after = args.stale_days.saturating_mul(86_400);
     json!({
         "version": 1,
         "mint": args.mint,
         "cluster": args.cluster,
-        "rpc": args.rpc,
+        "rpc": rpc_label(&args.rpc),
         "commitment": rc_proof::COMMITMENT,
         "updated_at": now,
         "poll_interval_secs": args.interval,
@@ -269,7 +294,7 @@ fn print_summary(
             }
         })
         .collect();
-    let reserve = latest.map_or("none".to_string(), |r| r.reserve_amount.to_string());
+    let reserve = latest.map_or("NONE".to_string(), |r| r.reserve_amount.to_string());
     println!(
         "slot {} supply {} reserve {} new_tx {} | {}{}",
         report.supply.context_slot,
@@ -290,5 +315,93 @@ fn print_summary(
     }
     for (s, t) in &report.unparsed {
         println!("  WARNING unparsed Token-2022 instruction {t} in {s}");
+    }
+}
+
+/// RPC URL without query string or credentials: provider API keys (`?api-key=`) must not end up in
+/// proofs, status.json or webhooks.
+pub fn rpc_label(url: &str) -> String {
+    let no_query = url.split(['?', '#']).next().unwrap_or_default();
+    match no_query.split_once("://") {
+        Some((scheme, rest)) => {
+            let host_path = rest.rsplit_once('@').map_or(rest, |(_, h)| h);
+            format!("{scheme}://{host_path}")
+        }
+        None => no_query.to_string(),
+    }
+}
+
+/// Why the reserve evidence can't back R1, if it can't.
+pub fn reserve_problem(
+    latest: Option<&Reserve>,
+    rejected: &[(String, String)],
+    now: i64,
+    stale_after: i64,
+) -> Option<String> {
+    let mut problems = Vec::new();
+    match latest {
+        None => problems.push("no valid reserve attestation: R1 cannot be evaluated".to_string()),
+        Some(r) if now.saturating_sub(r.as_of_ts) > stale_after => problems.push(format!(
+            "latest reserve attestation is {} days old",
+            now.saturating_sub(r.as_of_ts) / 86_400
+        )),
+        Some(_) => {}
+    }
+    if !rejected.is_empty() {
+        let reasons: Vec<&str> = rejected.iter().map(|(_, why)| why.as_str()).collect();
+        problems.push(format!(
+            "{} reserve attestation(s) rejected: {}",
+            rejected.len(),
+            reasons.join("; ")
+        ));
+    }
+    (!problems.is_empty()).then(|| problems.join(" | "))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rpc_label_strips_api_keys_and_credentials() {
+        assert_eq!(
+            rpc_label("https://devnet.helius-rpc.com/?api-key=SECRET"),
+            "https://devnet.helius-rpc.com/"
+        );
+        assert_eq!(
+            rpc_label("https://user:pw@rpc.example.com/x?k=1#f"),
+            "https://rpc.example.com/x"
+        );
+        assert_eq!(
+            rpc_label("https://api.devnet.solana.com"),
+            "https://api.devnet.solana.com"
+        );
+    }
+
+    fn reserve(as_of_ts: i64) -> Reserve {
+        Reserve {
+            mint: "M".into(),
+            as_of_ts,
+            reserve_amount: 1,
+            attestor: "A".into(),
+            sig: "s".into(),
+            source_url: "u".into(),
+        }
+    }
+
+    // Bug caught: R1 passing vacuously (dashboard green) with no, stale, or rejected reserve evidence.
+    #[test]
+    fn missing_stale_or_rejected_reserve_is_a_problem() {
+        let day = 86_400;
+        assert!(reserve_problem(None, &[], 0, 7 * day).is_some());
+        assert!(reserve_problem(Some(&reserve(0)), &[], 8 * day, 7 * day).is_some());
+        assert!(reserve_problem(
+            Some(&reserve(0)),
+            &[("A".into(), "bad sig".into())],
+            0,
+            7 * day
+        )
+        .is_some());
+        assert_eq!(reserve_problem(Some(&reserve(0)), &[], day, 7 * day), None);
     }
 }

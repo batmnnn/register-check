@@ -35,6 +35,15 @@ pub fn write_proof(dir: &Path, bundle: &Value) -> Result<(PathBuf, bool), CliErr
     Ok((path, true))
 }
 
+/// True if the proof file exists and has not been attested yet.
+#[cfg(feature = "attest")]
+pub fn needs_attestation(path: &Path) -> bool {
+    std::fs::read_to_string(path)
+        .ok()
+        .and_then(|s| serde_json::from_str::<Value>(&s).ok())
+        .is_some_and(|b| b["attested_tx"].is_null())
+}
+
 pub fn print_alert(bundle: &Value, path: &Path) {
     println!(
         "ALERT {} mint={} slot={} sig={}\n      observed={} expected={}\n      proof={} hash={}\n      {}",
