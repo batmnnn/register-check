@@ -34,8 +34,8 @@ pub struct ChainArgs {
     #[arg(long, default_value = "~/.config/solana/id.json")]
     pub keypair: String,
     /// devnet, testnet, mainnet, localnet, or an RPC URL.
-    #[arg(long = "attest-cluster", default_value = "devnet")]
-    pub cluster: String,
+    #[arg(long, default_value = "devnet")]
+    pub attest_cluster: String,
 }
 
 fn invalid(e: impl std::fmt::Display) -> CliError {
@@ -105,7 +105,7 @@ impl Attestor {
         let payer = Arc::new(load_keypair(&args.keypair)?);
         let authority = payer.pubkey();
         let client = Client::new_with_options(
-            cluster(&args.cluster)?,
+            cluster(&args.attest_cluster)?,
             payer,
             CommitmentConfig::confirmed(),
         );
@@ -114,7 +114,7 @@ impl Attestor {
         Ok(Self {
             program,
             authority,
-            cluster_name: args.cluster.clone(),
+            cluster_name: args.attest_cluster.clone(),
         })
     }
 

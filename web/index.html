@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Register Check</title>
+<style>
+  :root {
+    --bg: #0b0d10; --panel: #12161b; --line: #1f262e; --text: #e6e9ec; --dim: #8a949e;
+    --ok: #3fb950; --ok-bg: rgba(63,185,80,.08); --bad: #f85149; --bad-bg: rgba(248,81,73,.09);
+    --warn: #d29922; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 var(--sans); }
+  a { color: inherit; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+  a:hover { text-decoration-color: var(--dim); }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 28px 24px 64px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+           border-bottom: 1px solid var(--line); padding-bottom: 18px; }
+  h1 { font-size: 18px; font-weight: 600; letter-spacing: -.01em; margin: 0; }
+  h1 span { color: var(--dim); font-weight: 400; }
+  .meta { color: var(--dim); font: 12px var(--mono); display: flex; gap: 18px; flex-wrap: wrap; }
+  .live::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+                  background: var(--ok); margin-right: 7px; vertical-align: 1px; }
+  .stale .live::before { background: var(--warn); }
+  .banner { margin-top: 18px; padding: 10px 14px; border: 1px solid var(--warn); color: var(--warn);
+            border-radius: 6px; font-size: 13px; display: none; }
+  .stale .banner { display: block; }
+  .stale main { filter: grayscale(1); opacity: .55; }
+
+  .hero { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; margin-top: 22px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; }
+  .label { color: var(--dim); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  .big { font: 600 30px/1.15 var(--sans); letter-spacing: -.02em; font-variant-numeric: tabular-nums; margin-top: 6px; }
+  .big small { font-size: 15px; color: var(--dim); font-weight: 400; }
+  .bar { position: relative; height: 8px; background: var(--line); border-radius: 4px; margin: 16px 0 8px; overflow: visible; }
+  .bar i { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--ok); transition: width .4s ease; }
+  .bar b { position: absolute; top: -5px; width: 2px; height: 18px; background: var(--text); }
+  .over .bar i { background: var(--bad); }
+  .row { display: flex; justify-content: space-between; color: var(--dim); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .verdict { font: 600 22px/1.2 var(--sans); margin-top: 6px; }
+  .verdict.ok { color: var(--ok); } .verdict.bad { color: var(--bad); }
+
+  .rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 16px; }
+  .rule { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; background: var(--panel); transition: background .3s, border-color .3s; }
+  .rule.ok { background: var(--ok-bg); } .rule.bad { background: var(--bad-bg); border-color: rgba(248,81,73,.45); }
+  .rule .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .rule .id { font: 600 13px var(--mono); }
+  .pill { font: 600 11px var(--mono); padding: 2px 8px; border-radius: 99px; white-space: nowrap; flex-shrink: 0; }
+  .ok .pill { color: var(--ok); border: 1px solid rgba(63,185,80,.4); }
+  .bad .pill { color: var(--bad); border: 1px solid rgba(248,81,73,.5); }
+  .rule p { margin: 8px 0 0; color: var(--dim); font-size: 12.5px; }
+  .rule code { font: 11px var(--mono); color: var(--dim); }
+
+  h2 { font-size: 13px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: .06em; margin: 30px 0 10px; }
+  .alerts { display: flex; flex-direction: column; gap: 10px; }
+  .alert { border: 1px solid var(--line); border-left: 3px solid var(--bad); border-radius: 6px; background: var(--panel); padding: 14px 16px; }
+  .alert .head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .alert .rid { font: 600 13px var(--mono); color: var(--bad); }
+  .kv { display: grid; grid-template-columns: 120px 1fr; gap: 4px 14px; margin-top: 10px; font: 12px var(--mono); }
+  .kv dt { color: var(--dim); } .kv dd { margin: 0; overflow-wrap: anywhere; }
+  .chain { font: 600 11px var(--mono); }
+  .chain.on { color: var(--ok); } .chain.off { color: var(--dim); }
+  .empty { color: var(--dim); border: 1px dashed var(--line); border-radius: 6px; padding: 18px; text-align: center; }
+  footer { margin-top: 34px; color: var(--dim); font-size: 12px; border-top: 1px solid var(--line); padding-top: 14px; }
+  footer code { font: 12px var(--mono); color: var(--text); }
+  @media (max-width: 760px) { .hero { grid-template-columns: 1fr; } .kv { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <header>
+    <h1>Register Check <span id="mint">loading…</span></h1>
+    <div class="meta">
+      <span class="live" id="updated">—</span>
+      <span id="slot">slot —</span>
+      <span id="cluster">—</span>
+    </div>
+  </header>
+  <div class="banner" id="banner">Watcher has not reported recently. Last known state shown greyed out; it is not a live all-clear.</div>
+  <main>
+    <section class="hero">
+      <div class="panel" id="supplyPanel">
+        <div class="label">Supply vs attested reserve</div>
+        <div class="big" id="supply">—</div>
+        <div class="bar"><i id="fill" style="width:0"></i><b id="mark" style="left:0"></b></div>
+        <div class="row"><span id="ratio">—</span><span id="reserveMeta">—</span></div>
+      </div>
+      <div class="panel">
+        <div class="label">Register status (finalized)</div>
+        <div class="verdict" id="verdict">—</div>
+        <div class="row" style="margin-top:10px"><span id="counts">—</span><span id="drift"></span></div>
+      </div>
+    </section>
+    <section class="rules" id="rules"></section>
+    <h2>Evidence</h2>
+    <section class="alerts" id="alerts"><div class="empty">No violations. Every rule passes on finalized data.</div></section>
+  </main>
+  <footer>
+    Each alert is a proof bundle. Re-derive its hash with <code>python3 -I scripts/verify_proof.py proofs/*.json</code>,
+    re-fetch the transaction from the explorer link, and re-run the rule SQL. Evidence, not an audit opinion.
+  </footer>
+</div>
+<script>
+const STATUS_URL = new URLSearchParams(location.search).get("status") || "../proofs/status.json";
+const BASE = STATUS_URL.replace(/[^/]*$/, "");
+const RULE_TEXT = {
+  R0_supply_drift: "Computed supply disagrees with getTokenSupply: a supply change was not parsed.",
+  R1_unbacked_mint: "Supply after a mint exceeds the latest signed reserve attestation.",
+  R2_non_allowlisted_holder: "A wallet outside the allowlist holds a positive balance.",
+  R3_holder_concentration: "A single holder controls more than 20% of supply.",
+  R4_privileged_change: "Mint/freeze authority, permanent delegate or transfer-hook program changed.",
+};
+const proofCache = new Map();
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const short = (s, n = 4) => (s && s.length > 2 * n + 1 ? `${s.slice(0, n)}…${s.slice(-n)}` : s ?? "—");
+
+// Exact base-unit -> token formatting with BigInt (amounts arrive as strings).
+function tokens(base, decimals) {
+  if (base == null) return "—";
+  const b = BigInt(base), d = BigInt(decimals), scale = 10n ** d;
+  const whole = (b / scale).toLocaleString("en-US");
+  const frac = (b % scale).toString().padStart(Number(d), "0").replace(/0+$/, "");
+  return frac ? `${whole}.${frac}` : whole;
+}
+function ago(ts) {
+  const s = Math.max(0, Math.round(Date.now() / 1000 - ts));
+  return s < 60 ? `${s}s ago` : s < 3600 ? `${Math.round(s / 60)}m ago` : `${Math.round(s / 3600)}h ago`;
+}
+function explorer(kind, id, cluster) {
+  const q = cluster === "mainnet-beta" ? "" : `?cluster=${encodeURIComponent(cluster)}`;
+  return `https://explorer.solana.com/${kind}/${encodeURIComponent(id)}${q}`;
+}
+
+async function loadProof(name) {
+  if (proofCache.has(name) && proofCache.get(name).attested_tx) return proofCache.get(name);
+  const r = await fetch(BASE + encodeURIComponent(name), { cache: "no-store" });
+  if (!r.ok) return proofCache.get(name) || null;
+  const p = await r.json();
+  proofCache.set(name, p);
+  return p;
+}
+
+function renderRules(st) {
+  $("rules").innerHTML = st.rules.map((r) => `
+    <div class="rule ${r.passed ? "ok" : "bad"}">
+      <div class="top"><span class="id">${esc(r.id.split("_")[0])} ${esc(r.id.split("_").slice(1).join(" "))}</span>
+        <span class="pill">${r.passed ? "PASS" : `FAIL · ${r.violations}`}</span></div>
+      <p>${esc(RULE_TEXT[r.id] || "")}</p>
+      ${r.sql_sha256 ? `<code title="sha256 of rules/${esc(r.id.split("_")[0])}.sql">sql ${esc(r.sql_sha256.slice(0, 16))}…</code>` : ""}
+    </div>`).join("");
+}
+
+function renderAlert(p, st) {
+  const obs = Object.entries(p.observed || {}).map(([k, v]) => `${k}=${typeof v === "string" && /^\d+$/.test(v) && k !== "slot" ? tokens(v, st.decimals) : v}`).join("  ");
+  const exp = Object.entries(p.expected || {}).map(([k, v]) => `${k}=${typeof v === "string" && /^\d+$/.test(v) ? tokens(v, st.decimals) : v}`).join("  ");
+  const chain = p.attested_tx
+    ? `<a class="chain on" href="${esc(explorer("tx", p.attested_tx, st.cluster))}" target="_blank" rel="noopener">✓ hash on-chain</a>`
+    : `<span class="chain off">off-chain</span>`;
+  return `<div class="alert">
+    <div class="head"><span class="rid">${esc(p.rule)}</span>${chain}</div>
+    <dl class="kv">
+      <dt>observed</dt><dd>${esc(obs)}</dd>
+      <dt>expected</dt><dd>${esc(exp)}</dd>
+      <dt>evidence</dt><dd><a href="${esc(p.explorer)}" target="_blank" rel="noopener">${esc(p.signature ? "tx " + short(p.signature, 8) : "account")}</a>${p.slot != null ? ` · slot ${esc(p.slot)}` : ""} · ${esc(p.commitment)}</dd>
+      <dt>result_hash</dt><dd>${esc(p.result_hash)}</dd>
+      <dt>rule sql</dt><dd>${esc(p.rule_sql_sha256)}</dd>
+    </dl></div>`;
+}
+
+async function tick() {
+  let st;
+  try {
+    const r = await fetch(STATUS_URL, { cache: "no-store" });
+    if (!r.ok) throw new Error(r.status);
+    st = await r.json();
+  } catch (e) {
+    $("updated").textContent = "status.json unreachable";
+    document.body.classList.add("stale");
+    return;
+  }
+  const staleAfter = Math.max(15, 4 * (st.poll_interval_secs || 5));
+  document.body.classList.toggle("stale", Date.now() / 1000 - st.updated_at > staleAfter);
+  $("mint").textContent = short(st.mint, 6);
+  $("mint").title = st.mint;
+  $("updated").textContent = `updated ${ago(st.updated_at)}`;
+  $("slot").textContent = `finalized slot ${Number(st.finalized_slot).toLocaleString("en-US")}`;
+  $("cluster").innerHTML = `<a href="${esc(explorer("address", st.mint, st.cluster))}" target="_blank" rel="noopener">${esc(st.cluster)}</a>`;
+
+  const d = st.decimals ?? 6, supply = BigInt(st.supply), reserve = st.reserve ? BigInt(st.reserve.amount) : null;
+  $("supply").innerHTML = `${tokens(st.supply, d)} <small>/ ${reserve != null ? tokens(st.reserve.amount, d) : "no reserve"}</small>`;
+  const over = reserve != null && supply > reserve;
+  $("supplyPanel").classList.toggle("over", over);
+  if (reserve != null && reserve > 0n) {
+    const pct = Number((supply * 10000n) / reserve) / 100, max = Math.max(100, pct) * 1.1;
+    $("fill").style.width = `${(pct / max) * 100}%`;
+    $("mark").style.left = `${(100 / max) * 100}%`;
+    $("ratio").textContent = `${pct.toFixed(2)}% of reserve${over ? " · UNBACKED" : ""}`;
+  }
+  $("reserveMeta").textContent = st.reserve
+    ? `attested ${new Date(st.reserve.as_of_ts * 1000).toISOString().slice(0, 16).replace("T", " ")} UTC by ${short(st.reserve.attestor)}${st.reserve.stale ? " · STALE" : ""}`
+    : "no valid attestation";
+
+  const failing = st.rules.filter((r) => !r.passed);
+  $("verdict").className = `verdict ${failing.length ? "bad" : "ok"}`;
+  $("verdict").textContent = failing.length ? `${failing.length} rule${failing.length > 1 ? "s" : ""} failing` : "All rules pass";
+  $("counts").textContent = `${st.rules.length} rules · ${st.pending_signatures} pending · ${st.unparsed.length} unparsed`;
+  $("drift").textContent = st.rejected_reserves?.length ? `${st.rejected_reserves.length} reserve(s) rejected` : "";
+  renderRules(st);
+
+  const names = st.rules.flatMap((r) => r.proofs || []);
+  const proofs = (await Promise.all(names.map(loadProof))).filter(Boolean);
+  // Rule order (R1 first), newest evidence first within a rule.
+  proofs.sort((a, b) => a.rule.localeCompare(b.rule) || Number(b.slot ?? 0) - Number(a.slot ?? 0));
+  $("alerts").innerHTML = proofs.length
+    ? proofs.map((p) => renderAlert(p, st)).join("")
+    : `<div class="empty">No violations. Every rule passes on finalized data.</div>`;
+}
+tick();
+setInterval(tick, 2000);
+</script>
+</body>
+</html>

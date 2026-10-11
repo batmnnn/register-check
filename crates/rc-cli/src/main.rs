@@ -129,3 +129,15 @@ async fn check(register: PathBuf, rules: PathBuf, cluster: String) -> Result<(),
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use clap::CommandFactory;
+
+    // Bug caught: conflicting argument names (e.g. two `cluster` flags via flatten) that only
+    // panic when the binary starts.
+    #[test]
+    fn cli_definition_is_consistent() {
+        super::Cli::command().debug_assert();
+    }
+}

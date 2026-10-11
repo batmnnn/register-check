@@ -8,6 +8,7 @@
 #   demo.sh unhook          set the transfer hook back to none (-> second R4 row)
 #   demo.sh reserve <n>     issuer signs a new reserve attestation of n tokens
 #   demo.sh stranger <n>    holder A sends n tokens to a wallet not on the allowlist (-> R2)
+#   demo.sh dashboard       serve the dashboard at http://127.0.0.1:8080/web/
 set -euo pipefail
 cd "$(dirname "$0")/.."
 SECRETS=.secrets RUN=run
@@ -51,5 +52,8 @@ case "$cmd" in
     n=${1:?usage: demo.sh stranger <n>}
     SPL transfer "$MINT" "$n" "$(solana-keygen pubkey "$(key stranger)")" --owner "$(key holder-A)" \
       --fee-payer "$PAYER" --fund-recipient --allow-unfunded-recipient | grep Signature ;;
-  *) sed -n '2,11p' "$0"; exit 1 ;;
+  dashboard)
+    echo "dashboard: http://127.0.0.1:8080/web/"
+    exec python3 -m http.server 8080 --bind 127.0.0.1 ;;
+  *) sed -n '2,12p' "$0"; exit 1 ;;
 esac

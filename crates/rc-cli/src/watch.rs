@@ -38,6 +38,9 @@ pub struct WatchArgs {
     pub out: PathBuf,
     #[arg(long, default_value_t = 5)]
     pub interval: u64,
+    /// Token decimals, for display only (amounts stay in base units everywhere else).
+    #[arg(long, default_value_t = 6)]
+    pub decimals: u8,
     /// Reserve older than this many days is flagged stale.
     #[arg(long, default_value_t = 7)]
     pub stale_days: i64,
@@ -230,6 +233,8 @@ fn status_json(
         "rpc": args.rpc,
         "commitment": rc_proof::COMMITMENT,
         "updated_at": now,
+        "poll_interval_secs": args.interval,
+        "decimals": args.decimals,
         "finalized_slot": report.supply.context_slot,
         "supply": report.supply.amount.to_string(),
         "computed_supply": report.computed_supply.to_string(),
