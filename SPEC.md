@@ -58,7 +58,7 @@ All `mint`/owner/authority/signature columns are `Utf8` (base58). Amounts are `U
 
 `tx_index` (position in the block) and `ix_index` (instruction position within the tx, inner and batch-wrapped instructions numbered in execution order) are additions to the PRD data model. Events order by `(slot, tx_index, ix_index)`; this keeps same-slot and same-tx ordering deterministic (red-team c, m).
 
-`change_kind` ∈ {`mint_authority`, `freeze_authority`, `permanent_delegate`, `transfer_hook_program`, `close_authority`, `other`}.
+`change_kind` ∈ {`mint_authority`, `freeze_authority`, `permanent_delegate`, `transfer_hook_program`, `transfer_hook_authority`, `close_authority`, `other`}.
 
 Views registered by rc-engine (SQL, created in `context.rs`):
 - `latest_reserve(mint, reserve_amount, as_of_ts, attestor)`: row with the max `as_of_ts` per mint.
@@ -94,6 +94,13 @@ FROM authority_changes
 WHERE change_kind IN ('mint_authority','freeze_authority','permanent_delegate','transfer_hook_program')
 ORDER BY slot, tx_index;
 ```
+
+R2 also returns transfer rows (`to_owner` not allowlisted, with `signature`) to catch pass-through; R4 includes `transfer_hook_authority`. The SQL in `rules/` is authoritative.
+
+**R0 integrity checks** (computed by rc-ingest / rc-cli, shown as failing pseudo-rules in status.json):
+- `R0_supply_drift`: computed supply ≠ `getTokenSupply` (held while txs are pending).
+- `R0_balance_drift`: a known token account's `getMultipleAccounts` amount ≠ history at the same slot, in two consecutive polls.
+- `R0_reserve_evidence`: no valid reserve, a reserve older than `--stale-days`, or a rejected attestation.
 
 R1 compares against the latest attested reserve, not the reserve that applied at mint time. This is a known v0 limitation and gets stated in the README.
 
@@ -197,7 +204,7 @@ Sinks: console (always), JSON file (always), webhook (`--webhook URL`, optional,
 #[account] pub struct Rule   { pub id: [u8; 32], pub sql_hash: [u8; 32], pub bump: u8 }             // seeds ["rule", id, sql_hash]: each SQL version is its own account
 #[account] pub struct CheckResult { pub rule: Pubkey, pub slot: u64, pub result_hash: [u8; 32],
                                     pub violated: bool, pub posted_at: i64, pub bump: u8 }         // seeds ["result", rule, result_hash]
-pub fn init_config(ctx) -> Result<()>;                                     // payer becomes authority
+pub fn init_config(ctx) -> Result<()>;   // signer must be the program upgrade authority (ProgramData); becomes Config.authority
 pub fn register_rule(ctx, id: [u8;32], sql_hash: [u8;32]) -> Result<()>;   // has_one = authority
 pub fn post_result(ctx, slot: u64, result_hash: [u8;32], violated: bool) -> Result<()>;  // has_one = authority
 ```
