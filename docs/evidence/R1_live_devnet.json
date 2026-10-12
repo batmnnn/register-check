@@ -1,0 +1,31 @@
+{
+  "attested_tx": "MFsphas4YFuGivZYKiUA4KLrkgdvwGRhSkrqzAMaXzeYrtHLypaDj6RotyhFxfcKCDPCs7BoApNMFqPr4x3eSEF",
+  "cluster": "devnet",
+  "commitment": "finalized",
+  "expected": {
+    "attestor": "D9pD8oATznvjK4pUeGoAUCMpaZzAhh5XLrVTfLR5xxjv",
+    "reserve_amount": "1000000000",
+    "reserve_as_of": "2026-10-11T23:45:40Z"
+  },
+  "explorer": "https://explorer.solana.com/tx/2M5cweV7qS7wh3RAAVh97V2zFuX1QiNnMgZurhUPBih3zTuhzeF85z9HmShuqTMwe2mto3Zhicxs3tnzUVAcggPi?cluster=devnet",
+  "mint": "3ukPBbBbaGwz6xeNJ9gt5PHGvMx9Qr22epB1QvyNZY2F",
+  "observed": {
+    "supply_after": "1100000000"
+  },
+  "result_hash": "79f9db60ac70dac504e92ab2e6199a01e4fdd4b93ba2e78482c9df5f8aa88c23",
+  "row": {
+    "as_of_ts": "2026-10-11T23:45:40Z",
+    "attestor": "D9pD8oATznvjK4pUeGoAUCMpaZzAhh5XLrVTfLR5xxjv",
+    "mint": "3ukPBbBbaGwz6xeNJ9gt5PHGvMx9Qr22epB1QvyNZY2F",
+    "reserve_amount": "1000000000",
+    "signature": "2M5cweV7qS7wh3RAAVh97V2zFuX1QiNnMgZurhUPBih3zTuhzeF85z9HmShuqTMwe2mto3Zhicxs3tnzUVAcggPi",
+    "slot": "510076516",
+    "supply_after": "1100000000"
+  },
+  "rpc": "https://api.devnet.solana.com",
+  "rule": "R1_unbacked_mint",
+  "rule_sql_sha256": "a8b6374febe3ff70ebc0d6c98a4042b2c30b010c183038bb9c6d207a3bfb3742",
+  "signature": "2M5cweV7qS7wh3RAAVh97V2zFuX1QiNnMgZurhUPBih3zTuhzeF85z9HmShuqTMwe2mto3Zhicxs3tnzUVAcggPi",
+  "slot": 510076516,
+  "version": 1
+}

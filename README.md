@@ -77,7 +77,8 @@ flowchart LR
 ## Verify a proof yourself
 
 ```bash
-python3 -I scripts/verify_proof.py fixtures/proof/r1_demo.golden.json   # works on a fresh clone
+python3 -I scripts/verify_proof.py docs/evidence/R1_live_devnet.json  # a real devnet proof, attested on-chain
+python3 -I scripts/verify_proof.py fixtures/proof/r1_demo.golden.json   # golden test fixture
 python3 -I scripts/verify_proof.py proofs/*.json                       # proofs from your own watcher
 ```
 
