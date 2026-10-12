@@ -68,7 +68,7 @@ target/debug/rc attest proofs/R1_*.json # attest an existing proof
 python3 -I scripts/verify_proof.py proofs/*.json   # independent hash check
 ```
 
-## Coding Rules (from prompts.md)
+## Coding Rules
 
 **Spec first**: Before writing code, create a SPEC.md documenting files, types, function signatures, 7 table schemas as Arrow types, 4 SQL rules, and how each will be tested.
 
@@ -115,7 +115,7 @@ Each lives in `rules/R<N>.sql` and is tested against pass + fail fixtures.
 
 ## Edge Cases & Red-Team Scope
 
-See prompts.md step 8 for the full adversarial audit. High-priority cases:
+High-priority adversarial cases:
 - CPI inner instructions (mints via delegate, not direct)
 - Permanent-delegate burn vs theft
 - Transfer-hook program swaps between polls

@@ -1,6 +1,6 @@
 # Register Check: SPEC (v0, devnet)
 
-Source of truth for v0. Derived from prd.md (locked) and poc_plan.md. Toolchain facts are in CLAUDE.md.
+Source of truth for v0. Derived from the locked product brief and PoC plan (kept out of the public repo). Toolchain facts are in CLAUDE.md.
 If code and this spec disagree, fix one of them in the same commit.
 
 ## 0. Decisions that shape everything
@@ -231,7 +231,7 @@ The account is named `CheckResult` because `Result` would shadow `anchor_lang::R
 
 Yellowstone/Geyser streaming · mainnet · confidential transfers and the confidential mint/burn extension (per-holder rules impossible and confidential supply isn't visible; stated in README; devnet mint is created without it) · multisig authority · Chainlink/Brevis reserve inputs · intra-month issuance budget · reserve-at-mint-time matching · auth on the dashboard · webhook retries.
 
-## 7. Build order (matches poc_plan)
+## 7. Build order
 
 1. Workspace + rc-types + fixtures + rules + rc-engine tests (green offline)
 2. rc-ingest with saved RPC fixtures

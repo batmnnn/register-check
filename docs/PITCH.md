@@ -1,6 +1,6 @@
 # Pitch video script (≤ 3:00)
 
-Facts below are the [V] items from dossier.md or measured in this repo. Do not add prices (PRD §9) or unverified numbers.
+Facts below are verified from primary sources or measured in this repo. Do not add prices or unverified numbers.
 
 **0:00 Problem (35 s)**
 Tokenized dollars on Solana change supply every slot. The evidence that they're backed is a monthly report: Circle publishes a monthly examination, Paxos monthly attestations for PYUSD and USDG. The GENIUS Act (Public Law 119-27) makes that monthly report law. Between two reports, nobody can prove that each mint matched reserves, that only allowed wallets hold a permissioned token, or that a transfer hook or permanent delegate wasn't changed.

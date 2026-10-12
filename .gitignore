@@ -15,3 +15,9 @@ wallet.json
 proofs/
 run/
 archive/
+
+# planning docs (kept local, not public)
+dossier.md
+prd.md
+poc_plan.md
+prompts.md
