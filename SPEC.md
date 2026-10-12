@@ -1,6 +1,6 @@
 # Register Check: SPEC (v0, devnet)
 
-Source of truth for v0. Derived from the locked product brief and PoC plan (kept out of the public repo). Toolchain facts are in CLAUDE.md.
+Source of truth for v0. Derived from the locked product brief and PoC plan (kept out of the public repo). Toolchain versions are pinned in rust-toolchain.toml and Cargo.toml.
 If code and this spec disagree, fix one of them in the same commit.
 
 ## 0. Decisions that shape everything
