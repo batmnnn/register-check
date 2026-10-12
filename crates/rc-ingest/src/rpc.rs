@@ -32,6 +32,11 @@ pub trait RpcSource: Send + Sync {
     /// `getTransaction` result (jsonParsed, maxSupportedTransactionVersion 0); `None` if unknown.
     async fn transaction(&self, signature: &str) -> Result<Option<Value>, IngestError>;
     async fn token_supply(&self, mint: &str) -> Result<TokenSupply, IngestError>;
+    /// Raw token amount of each account (`None` = account closed / not found), plus the slot read at.
+    async fn token_account_amounts(
+        &self,
+        accounts: &[String],
+    ) -> Result<(u64, Vec<Option<u64>>), IngestError>;
 }
 
 /// JSON-RPC over HTTP with backoff on HTTP 429 (public devnet rate-limits bursts).
@@ -144,6 +149,27 @@ pub(crate) fn parse_token_supply(result: &Value) -> Result<TokenSupply, IngestEr
     })
 }
 
+pub(crate) fn parse_multiple_token_amounts(
+    result: &Value,
+) -> Result<(u64, Vec<Option<u64>>), IngestError> {
+    const M: &str = "getMultipleAccounts";
+    let slot = result["context"]["slot"]
+        .as_u64()
+        .ok_or_else(|| bad(M, "missing context.slot"))?;
+    let values = result["value"]
+        .as_array()
+        .ok_or_else(|| bad(M, "value is not an array"))?;
+    let amounts = values
+        .iter()
+        .map(|v| {
+            v["data"]["parsed"]["info"]["tokenAmount"]["amount"]
+                .as_str()
+                .and_then(|a| a.parse::<u64>().ok())
+        })
+        .collect();
+    Ok((slot, amounts))
+}
+
 #[async_trait]
 impl RpcSource for HttpRpc {
     async fn signatures(
@@ -172,5 +198,23 @@ impl RpcSource for HttpRpc {
             .call("getTokenSupply", json!([mint, {"commitment": "finalized"}]))
             .await?;
         parse_token_supply(&r)
+    }
+
+    async fn token_account_amounts(
+        &self,
+        accounts: &[String],
+    ) -> Result<(u64, Vec<Option<u64>>), IngestError> {
+        let mut slot = 0;
+        let mut out = Vec::with_capacity(accounts.len());
+        for chunk in accounts.chunks(100) {
+            let cfg = json!({"commitment": "finalized", "encoding": "jsonParsed"});
+            let r = self
+                .call("getMultipleAccounts", json!([chunk, cfg]))
+                .await?;
+            let (s, amounts) = parse_multiple_token_amounts(&r)?;
+            slot = if slot == 0 { s } else { slot.min(s) };
+            out.extend(amounts);
+        }
+        Ok((slot, out))
     }
 }

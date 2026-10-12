@@ -26,6 +26,17 @@ pub struct PollReport {
     pub supply: TokenSupply,
     pub computed_supply: u64,
     pub drift: Option<SupplyDrift>,
+    /// Token accounts whose on-chain balance disagreed with history in two consecutive polls:
+    /// a token movement the signature scan missed (e.g. an unchecked `transfer` that doesn't
+    /// reference the mint). (account, onchain, computed); onchain `None` = account closed.
+    pub balance_drift: Vec<BalanceDrift>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BalanceDrift {
+    pub account: String,
+    pub onchain: Option<u64>,
+    pub computed: u64,
 }
 
 /// Follows one mint. Keeps every successful transaction and rebuilds all events from the full
@@ -38,6 +49,10 @@ pub struct Ingester<R: RpcSource> {
     /// (slot, tx_index, signature) -> raw transaction.
     txs: BTreeMap<(u64, u32, String), Value>,
     register: Register,
+    /// Token accounts of the mint seen in history (from pre/post token balances).
+    known_accounts: Vec<String>,
+    /// Accounts that mismatched last poll; a mismatch is reported only if it repeats.
+    suspect_accounts: HashSet<String>,
 }
 
 impl<R: RpcSource> Ingester<R> {
@@ -49,6 +64,8 @@ impl<R: RpcSource> Ingester<R> {
             pending: HashSet::new(),
             txs: BTreeMap::new(),
             register: Register::default(),
+            known_accounts: Vec::new(),
+            suspect_accounts: HashSet::new(),
         }
     }
 
@@ -66,8 +83,16 @@ impl<R: RpcSource> Ingester<R> {
     }
 
     pub async fn poll(&mut self) -> Result<PollReport, IngestError> {
-        // Read supply first: anything finalized after this slot is excluded from reconciliation.
+        // Read supply and known token-account balances first: anything finalized after these
+        // reads is excluded from reconciliation.
         let supply = self.rpc.token_supply(&self.mint).await?;
+        let onchain_accounts = if self.known_accounts.is_empty() {
+            None
+        } else {
+            let accounts = self.known_accounts.clone();
+            let (slot, amounts) = self.rpc.token_account_amounts(&accounts).await?;
+            Some((slot, accounts, amounts))
+        };
 
         // Page newest -> oldest until we reach signatures already seen (or the start of history).
         let mut fresh = Vec::new();
@@ -122,8 +147,30 @@ impl<R: RpcSource> Ingester<R> {
             // `None`: finalized but not served yet; stays pending.
         }
 
-        let (register, unparsed, computed_upto) = self.rebuild(supply.context_slot);
+        let acct_slot = onchain_accounts.as_ref().map_or(0, |(s, _, _)| *s);
+        let (register, unparsed, computed_upto, accounts_upto, known) =
+            self.rebuild(supply.context_slot, acct_slot);
         self.register = register;
+        self.known_accounts = known;
+
+        let mut mismatched: HashSet<String> = HashSet::new();
+        let mut balance_drift = Vec::new();
+        if let (Some((_, accounts, amounts)), true) = (onchain_accounts, self.pending.is_empty()) {
+            for (account, onchain) in accounts.into_iter().zip(amounts) {
+                let computed = accounts_upto.get(&account).copied().unwrap_or(0);
+                if onchain.unwrap_or(0) != computed {
+                    if self.suspect_accounts.contains(&account) {
+                        balance_drift.push(BalanceDrift {
+                            account: account.clone(),
+                            onchain,
+                            computed,
+                        });
+                    }
+                    mismatched.insert(account);
+                }
+            }
+        }
+        self.suspect_accounts = mismatched;
         let computed_supply = last_supply(&self.register);
         // While transactions are pending the computed supply is incomplete by construction, so
         // drift is only reported on a complete history (pending count is reported instead).
@@ -141,6 +188,7 @@ impl<R: RpcSource> Ingester<R> {
             supply,
             computed_supply,
             drift,
+            balance_drift,
         })
     }
 
@@ -148,7 +196,19 @@ impl<R: RpcSource> Ingester<R> {
     /// instructions / problems, and the supply computed from events at or before `upto_slot`.
     /// Never fails: a transaction that can't be parsed is reported in `unparsed` (and will show up
     /// as supply drift if it changed supply) instead of stopping monitoring.
-    fn rebuild(&self, upto_slot: u64) -> (Register, Vec<(String, String)>, u64) {
+    /// Also returns each token account's amount as of `acct_slot` and the list of known accounts.
+    #[allow(clippy::type_complexity)]
+    fn rebuild(
+        &self,
+        upto_slot: u64,
+        acct_slot: u64,
+    ) -> (
+        Register,
+        Vec<(String, String)>,
+        u64,
+        HashMap<String, u64>,
+        Vec<String>,
+    ) {
         let mut state = MintState::default();
         let mut reg = Register::default();
         let mut unparsed = Vec::new();
@@ -156,6 +216,7 @@ impl<R: RpcSource> Ingester<R> {
         let mut supply_upto: u64 = 0;
         // token account -> (owner, amount, slot); last write wins in replay order.
         let mut accounts: HashMap<String, (String, u64, u64)> = HashMap::new();
+        let mut accounts_upto: HashMap<String, u64> = HashMap::new();
 
         for ((_, _, sig), tx) in &self.txs {
             if tx["transactionIndex"].as_u64().is_none() {
@@ -172,6 +233,9 @@ impl<R: RpcSource> Ingester<R> {
             unparsed.extend(p.unparsed.iter().map(|t| (p.signature.clone(), t.clone())));
             for (account, owner, amount) in &p.balances {
                 accounts.insert(account.clone(), (owner.clone(), *amount, p.slot));
+                if p.slot <= acct_slot {
+                    accounts_upto.insert(account.clone(), *amount);
+                }
             }
             for ev in p.events {
                 match ev {
@@ -200,6 +264,8 @@ impl<R: RpcSource> Ingester<R> {
             }
         }
 
+        let mut known: Vec<String> = accounts.keys().cloned().collect();
+        known.sort();
         // Balances per owner (an owner may hold several token accounts of the mint).
         let mut by_owner: BTreeMap<String, (u64, u64)> = BTreeMap::new();
         for (owner, amount, slot) in accounts.into_values() {
@@ -216,7 +282,7 @@ impl<R: RpcSource> Ingester<R> {
                 slot,
             })
             .collect();
-        (reg, unparsed, supply_upto)
+        (reg, unparsed, supply_upto, accounts_upto, known)
     }
 }
 

@@ -6,6 +6,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Mutex;
 
 use async_trait::async_trait;
 use rc_ingest::{
@@ -62,6 +63,38 @@ struct FakeRpc {
     tx_calls: AtomicUsize,
     /// If non-zero, the Nth `transaction()` call (1-based) fails like an exhausted rate limit.
     fail_at: AtomicUsize,
+    /// On-chain token account amounts served by getMultipleAccounts.
+    accounts: Mutex<HashMap<String, u64>>,
+}
+
+/// Latest postTokenBalances amount per token account of MINT across the fixture history.
+fn fixture_account_amounts() -> HashMap<String, u64> {
+    let mut txs: Vec<Value> = TX_FIXTURES.iter().map(|n| fixture(n)).collect();
+    txs.sort_by_key(|t| (t["slot"].as_u64(), t["transactionIndex"].as_u64()));
+    let mut out = HashMap::new();
+    for t in txs {
+        let keys = t["transaction"]["message"]["accountKeys"]
+            .as_array()
+            .expect("keys")
+            .clone();
+        for b in t["meta"]["postTokenBalances"]
+            .as_array()
+            .into_iter()
+            .flatten()
+        {
+            if b["mint"] == MINT {
+                let i = b["accountIndex"].as_u64().expect("idx") as usize;
+                let acct = keys[i]["pubkey"].as_str().expect("pubkey").to_string();
+                let amt = b["uiTokenAmount"]["amount"]
+                    .as_str()
+                    .expect("amt")
+                    .parse()
+                    .expect("u64");
+                out.insert(acct, amt);
+            }
+        }
+    }
+    out
 }
 
 impl FakeRpc {
@@ -96,6 +129,7 @@ impl FakeRpc {
             page: 1000,
             tx_calls: AtomicUsize::new(0),
             fail_at: AtomicUsize::new(0),
+            accounts: Mutex::new(fixture_account_amounts()),
         }
     }
 }
@@ -135,6 +169,16 @@ impl RpcSource for FakeRpc {
     }
     async fn token_supply(&self, _m: &str) -> Result<TokenSupply, IngestError> {
         Ok(self.supply)
+    }
+    async fn token_account_amounts(
+        &self,
+        accounts: &[String],
+    ) -> Result<(u64, Vec<Option<u64>>), IngestError> {
+        let map = self.accounts.lock().expect("lock");
+        Ok((
+            u64::MAX,
+            accounts.iter().map(|a| map.get(a).copied()).collect(),
+        ))
     }
 }
 
@@ -322,6 +366,7 @@ async fn paginates_past_1000_signatures_and_dedups_page_overlap() {
         page: 1000,
         tx_calls: AtomicUsize::new(0),
         fail_at: AtomicUsize::new(0),
+        accounts: Mutex::new(HashMap::new()),
     };
     let mut ing = Ingester::new(rpc, MINT);
     let report = ing.poll().await.expect("poll");
@@ -465,6 +510,13 @@ async fn live_devnet_demo_mint_reconciles() {
     assert_eq!(report.computed_supply, report.supply.amount);
     let held: u64 = ing.register().balances.iter().map(|b| b.amount).sum();
     assert_eq!(held, report.supply.amount, "balances add up to supply");
+    for _ in 0..2 {
+        let r = ing
+            .poll()
+            .await
+            .expect("re-poll checks known token accounts");
+        assert!(r.balance_drift.is_empty(), "{:?}", r.balance_drift);
+    }
 }
 
 // Bug caught: a transient RPC error mid-poll permanently hides the older, unfetched signatures
@@ -567,5 +619,50 @@ async fn malformed_transaction_is_reported_not_fatal() {
         ing.register().mints.len(),
         1,
         "rest of history still ingested"
+    );
+}
+
+// Bug caught: a token movement the mint's signature list never shows (e.g. an unchecked
+// `transfer` on a mint without hook/fee/pause extensions) goes unnoticed (review finding #2).
+// Reported only when it persists across two polls, so RPC lag doesn't flap.
+#[tokio::test]
+async fn hidden_balance_change_is_reported_after_two_polls() {
+    let mut ing = Ingester::new(FakeRpc::devnet(), MINT);
+    let r1 = ing.poll().await.expect("poll 1");
+    assert!(r1.balance_drift.is_empty());
+    let r2 = ing
+        .poll()
+        .await
+        .expect("poll 2: accounts now known and checked");
+    assert!(
+        r2.balance_drift.is_empty(),
+        "history matches chain: {:?}",
+        r2.balance_drift
+    );
+
+    // Tokens leave holder B's account by a tx the mint's signature list never shows.
+    let b_account = {
+        let map = ing.rpc().accounts.lock().expect("lock");
+        map.iter()
+            .find(|(_, v)| **v == 20 * D)
+            .map(|(k, _)| k.clone())
+            .expect("B's account")
+    };
+    ing.rpc()
+        .accounts
+        .lock()
+        .expect("lock")
+        .insert(b_account.clone(), 0);
+    let r3 = ing.poll().await.expect("poll 3");
+    assert!(
+        r3.balance_drift.is_empty(),
+        "first sighting is only a suspect"
+    );
+    let r4 = ing.poll().await.expect("poll 4");
+    assert_eq!(r4.balance_drift.len(), 1, "{:?}", r4.balance_drift);
+    assert_eq!(r4.balance_drift[0].account, b_account);
+    assert_eq!(
+        (r4.balance_drift[0].onchain, r4.balance_drift[0].computed),
+        (Some(0), 20 * D)
     );
 }

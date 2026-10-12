@@ -111,6 +111,7 @@ const BASE = STATUS_URL.replace(/[^/]*$/, "");
 const RULE_TEXT = {
   R0_supply_drift: "Computed supply disagrees with getTokenSupply: a supply change was not parsed.",
   R1_unbacked_mint: "Supply after a mint exceeds the latest signed reserve attestation.",
+  R0_balance_drift: "A token account's on-chain balance disagrees with the ingested history: a movement was missed.",
   R0_reserve_evidence: "No valid, fresh, signed reserve attestation, so R1 cannot pass on evidence.",
   R2_non_allowlisted_holder: "A wallet outside the allowlist holds or received tokens.",
   R3_holder_concentration: "A single holder controls more than 20% of supply.",

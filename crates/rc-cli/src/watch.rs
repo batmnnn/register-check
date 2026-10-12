@@ -232,6 +232,20 @@ fn status_json(
             "proofs": [],
         }));
     }
+    if !report.balance_drift.is_empty() {
+        rule_rows.push(json!({
+            "id": "R0_balance_drift",
+            "passed": false,
+            "violations": report.balance_drift.len(),
+            "detail": report.balance_drift.iter().map(|d| format!(
+                "account {} onchain {} computed {}",
+                d.account,
+                d.onchain.map_or("closed".to_string(), |a| a.to_string()),
+                d.computed
+            )).collect::<Vec<_>>().join("; "),
+            "proofs": [],
+        }));
+    }
     for v in results {
         let sql_sha256 = rules
             .iter()
@@ -312,6 +326,12 @@ fn print_summary(
     );
     for (a, why) in rejected {
         println!("  rejected reserve from {a}: {why}");
+    }
+    for d in &report.balance_drift {
+        println!(
+            "  R0 BALANCE DRIFT account {} onchain {:?} computed {} (token movement not in mint history)",
+            d.account, d.onchain, d.computed
+        );
     }
     for (s, t) in &report.unparsed {
         println!("  WARNING unparsed Token-2022 instruction {t} in {s}");
